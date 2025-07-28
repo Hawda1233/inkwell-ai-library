@@ -14,6 +14,131 @@ export type Database = {
   }
   public: {
     Tables: {
+      book_transactions: {
+        Row: {
+          book_id: string
+          due_date: string | null
+          id: string
+          notes: string | null
+          processed_by: string | null
+          returned_date: string | null
+          status: string
+          student_id: string
+          transaction_date: string
+          transaction_type: string
+        }
+        Insert: {
+          book_id: string
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          processed_by?: string | null
+          returned_date?: string | null
+          status?: string
+          student_id: string
+          transaction_date?: string
+          transaction_type: string
+        }
+        Update: {
+          book_id?: string
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          processed_by?: string | null
+          returned_date?: string | null
+          status?: string
+          student_id?: string
+          transaction_date?: string
+          transaction_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_transactions_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      books: {
+        Row: {
+          author: string
+          available_copies: number
+          category: string | null
+          cover_image_url: string | null
+          created_at: string
+          description: string | null
+          id: string
+          isbn: string | null
+          location_shelf: string | null
+          publication_year: number | null
+          publisher: string | null
+          title: string
+          total_copies: number
+          updated_at: string
+        }
+        Insert: {
+          author: string
+          available_copies?: number
+          category?: string | null
+          cover_image_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          isbn?: string | null
+          location_shelf?: string | null
+          publication_year?: number | null
+          publisher?: string | null
+          title: string
+          total_copies?: number
+          updated_at?: string
+        }
+        Update: {
+          author?: string
+          available_copies?: number
+          category?: string | null
+          cover_image_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          isbn?: string | null
+          location_shelf?: string | null
+          publication_year?: number | null
+          publisher?: string | null
+          title?: string
+          total_copies?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      library_sessions: {
+        Row: {
+          check_in_time: string
+          check_out_time: string | null
+          id: string
+          purpose: string | null
+          session_status: string
+          student_id: string
+        }
+        Insert: {
+          check_in_time?: string
+          check_out_time?: string | null
+          id?: string
+          purpose?: string | null
+          session_status?: string
+          student_id: string
+        }
+        Update: {
+          check_in_time?: string
+          check_out_time?: string | null
+          id?: string
+          purpose?: string | null
+          session_status?: string
+          student_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -35,6 +160,33 @@ export type Database = {
           full_name?: string | null
           id?: string
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      student_digital_ids: {
+        Row: {
+          id: string
+          is_active: boolean
+          issued_at: string
+          qr_code_data: string
+          student_id: string
+          student_number: string | null
+        }
+        Insert: {
+          id?: string
+          is_active?: boolean
+          issued_at?: string
+          qr_code_data: string
+          student_id: string
+          student_number?: string | null
+        }
+        Update: {
+          id?: string
+          is_active?: boolean
+          issued_at?: string
+          qr_code_data?: string
+          student_id?: string
+          student_number?: string | null
         }
         Relationships: []
       }

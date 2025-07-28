@@ -2,41 +2,56 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
+/* Smart Digital Library Management System Design System
+   Modern Academic Theme with Indian Educational Aesthetics
+   All colors MUST be HSL.
 */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Academic Theme - Light Mode */
+    --background: 210 40% 98%;
+    --foreground: 220 87% 6%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 220 87% 6%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 220 87% 6%;
 
-    --primary: 222.2 47.4% 11.2%;
+    /* Academic Blue Primary */
+    --primary: 217 91% 24%;
     --primary-foreground: 210 40% 98%;
+    --primary-glow: 217 91% 35%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Elegant Academic Secondary */
+    --secondary: 220 13% 95%;
+    --secondary-foreground: 220 87% 6%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 215 16% 47%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Purple Academic Accent */
+    --accent: 262 83% 20%;
+    --accent-foreground: 210 40% 98%;
+    --accent-glow: 262 83% 35%;
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 217 91% 24%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
+
+    /* Library-specific design tokens */
+    --academic-gradient: linear-gradient(135deg, hsl(217 91% 24%), hsl(262 83% 20%));
+    --glass-bg: hsla(210 40% 98% / 0.8);
+    --glass-border: hsla(220 13% 91% / 0.3);
+    --shadow-elegant: 0 10px 30px -10px hsl(217 91% 24% / 0.2);
+    --shadow-glow: 0 0 40px hsl(217 91% 35% / 0.3);
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
     --sidebar-background: 0 0% 98%;
 
@@ -56,41 +71,55 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    /* Academic Theme - Dark Mode */
+    --background: 220 87% 6%;
     --foreground: 210 40% 98%;
 
-    --card: 222.2 84% 4.9%;
+    --card: 220 27% 8%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222.2 84% 4.9%;
+    --popover: 220 27% 8%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    /* Academic Blue Primary - Dark */
+    --primary: 217 91% 45%;
+    --primary-foreground: 220 87% 6%;
+    --primary-glow: 217 91% 55%;
 
-    --secondary: 217.2 32.6% 17.5%;
+    /* Dark Academic Secondary */
+    --secondary: 220 27% 12%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 220 27% 10%;
+    --muted-foreground: 215 20% 65%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    /* Purple Academic Accent - Dark */
+    --accent: 262 83% 45%;
+    --accent-foreground: 220 87% 6%;
+    --accent-glow: 262 83% 55%;
 
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 75% 55%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: 220 27% 15%;
+    --input: 220 27% 15%;
+    --ring: 217 91% 45%;
+
+    /* Dark mode library-specific tokens */
+    --academic-gradient: linear-gradient(135deg, hsl(217 91% 35%), hsl(262 83% 35%));
+    --glass-bg: hsla(220 27% 8% / 0.8);
+    --glass-border: hsla(220 27% 15% / 0.3);
+    --shadow-elegant: 0 10px 30px -10px hsl(217 91% 35% / 0.3);
+    --shadow-glow: 0 0 40px hsl(217 91% 45% / 0.4);
+
+    --sidebar-background: 220 27% 8%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 217 91% 45%;
+    --sidebar-primary-foreground: 220 87% 6%;
+    --sidebar-accent: 220 27% 12%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 220 27% 15%;
+    --sidebar-ring: 217 91% 45%;
   }
 }
 
@@ -101,5 +130,57 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Custom Library Management System Components */
+@layer components {
+  .glass-card {
+    @apply backdrop-blur-md border border-opacity-20 shadow-lg;
+    background: var(--glass-bg);
+    border-color: var(--glass-border);
+    box-shadow: var(--shadow-elegant);
+  }
+
+  .academic-gradient {
+    background: var(--academic-gradient);
+  }
+
+  .glow-effect {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .smooth-transition {
+    transition: var(--transition-smooth);
+  }
+
+  .nav-link {
+    @apply relative px-4 py-2 rounded-lg smooth-transition;
+    @apply hover:bg-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary/20;
+  }
+
+  .nav-link.active {
+    @apply bg-primary text-primary-foreground shadow-md;
+  }
+
+  .library-card {
+    @apply glass-card p-6 rounded-xl smooth-transition hover:shadow-xl hover:scale-[1.02];
+  }
+
+  .stat-card {
+    @apply library-card bg-gradient-to-br from-primary/5 to-accent/5;
+    @apply border-l-4 border-l-primary;
+  }
+
+  .book-card {
+    @apply library-card group cursor-pointer;
+    @apply hover:border-primary/30 hover:glow-effect;
+  }
+
+  .floating-button {
+    @apply fixed bottom-6 right-6 w-14 h-14 bg-primary text-primary-foreground;
+    @apply rounded-full shadow-lg glow-effect smooth-transition;
+    @apply hover:scale-110 hover:rotate-12 focus:outline-none focus:ring-2 focus:ring-primary/50;
   }
 }

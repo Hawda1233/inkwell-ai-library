@@ -1,31 +1,113 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Library, GraduationCap, Shield, Eye, EyeOff } from "lucide-react";
+import { Library, Eye, EyeOff, UserPlus } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import type { User } from "@supabase/supabase-js";
 
 export const Login = () => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [fullName, setFullName] = useState("");
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
-  const handleLogin = async (e: React.FormEvent, role: 'admin' | 'student') => {
+  useEffect(() => {
+    // Check if user is already logged in
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        // Redirect based on user role
+        const { data: userRole } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', session.user.id)
+          .single();
+        
+        if (userRole?.role === 'admin') {
+          navigate('/admin');
+        } else {
+          navigate('/student');
+        }
+      }
+    };
+    
+    checkUser();
+  }, [navigate]);
+
+  const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Simulate login process
-    setTimeout(() => {
-      setIsLoading(false);
-      // Redirect based on role
-      if (role === 'admin') {
-        window.location.href = '/admin';
+
+    try {
+      if (isSignUp) {
+        // Sign up new student
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/`,
+            data: {
+              full_name: fullName
+            }
+          }
+        });
+
+        if (error) throw error;
+
+        if (data.user) {
+          toast({
+            title: "Account created successfully!",
+            description: "Please check your email to verify your account.",
+          });
+          setIsSignUp(false);
+        }
       } else {
-        window.location.href = '/student';
+        // Sign in
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (error) throw error;
+
+        if (data.user) {
+          // Check user role and redirect
+          const { data: userRole } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', data.user.id)
+            .single();
+
+          toast({
+            title: "Welcome back!",
+            description: "You have been signed in successfully.",
+          });
+
+          if (userRole?.role === 'admin') {
+            navigate('/admin');
+          } else {
+            navigate('/student');
+          }
+        }
       }
-    }, 1500);
+    } catch (error: any) {
+      toast({
+        title: "Authentication failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -43,145 +125,100 @@ export const Login = () => {
               <Library className="w-8 h-8 text-white" />
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-foreground mb-2">Welcome Back</h1>
-          <p className="text-muted-foreground">Sign in to your SmartLibrary account</p>
+          <h1 className="text-2xl font-bold text-foreground mb-2">
+            {isSignUp ? "Create Account" : "Welcome Back"}
+          </h1>
+          <p className="text-muted-foreground">
+            {isSignUp 
+              ? "Join SmartLibrary as a student"
+              : "Sign in to your SmartLibrary account"
+            }
+          </p>
         </div>
 
-        {/* Login Form */}
+        {/* Auth Form */}
         <Card className="glass-card animate-scale-in">
           <CardHeader className="pb-4">
-            <CardTitle className="text-center">Sign In</CardTitle>
+            <CardTitle className="text-center">
+              {isSignUp ? "Student Registration" : "Sign In"}
+            </CardTitle>
             <CardDescription className="text-center">
-              Choose your account type to continue
+              {isSignUp 
+                ? "New students can register here"
+                : "Enter your credentials to continue"
+              }
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="student" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="student" className="flex items-center space-x-2">
-                  <GraduationCap className="w-4 h-4" />
-                  <span>Student</span>
-                </TabsTrigger>
-                <TabsTrigger value="admin" className="flex items-center space-x-2">
-                  <Shield className="w-4 h-4" />
-                  <span>Admin</span>
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="student" className="space-y-4 mt-6">
-                <div className="flex justify-center mb-4">
-                  <Badge variant="secondary" className="px-3 py-1">
-                    <GraduationCap className="w-3 h-3 mr-1" />
-                    Student Portal
-                  </Badge>
+            <form onSubmit={handleAuth} className="space-y-4">
+              {isSignUp && (
+                <div className="space-y-2">
+                  <Label htmlFor="full-name">Full Name</Label>
+                  <Input
+                    id="full-name"
+                    type="text"
+                    placeholder="Enter your full name"
+                    className="glass-card"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    required
+                  />
                 </div>
-                
-                <form onSubmit={(e) => handleLogin(e, 'student')} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="student-email">Student Email or Roll Number</Label>
-                    <Input
-                      id="student-email"
-                      type="text"
-                      placeholder="student@college.edu or 2024001"
-                      className="glass-card"
-                      required
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="student-password">Password</Label>
-                    <div className="relative">
-                      <Input
-                        id="student-password"
-                        type={showPassword ? "text" : "password"}
-                        placeholder="Enter your password"
-                        className="glass-card pr-10"
-                        required
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                        onClick={() => setShowPassword(!showPassword)}
-                      >
-                        {showPassword ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-
-                  <Button 
-                    type="submit" 
-                    variant="academic" 
-                    className="w-full" 
-                    disabled={isLoading}
+              )}
+              
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  className="glass-card"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
+                    className="glass-card pr-10"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                    onClick={() => setShowPassword(!showPassword)}
                   >
-                    {isLoading ? "Signing In..." : "Sign In as Student"}
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
                   </Button>
-                </form>
-              </TabsContent>
-
-              <TabsContent value="admin" className="space-y-4 mt-6">
-                <div className="flex justify-center mb-4">
-                  <Badge variant="secondary" className="px-3 py-1 bg-accent text-accent-foreground">
-                    <Shield className="w-3 h-3 mr-1" />
-                    Admin Panel
-                  </Badge>
                 </div>
-                
-                <form onSubmit={(e) => handleLogin(e, 'admin')} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="admin-email">Admin Email</Label>
-                    <Input
-                      id="admin-email"
-                      type="email"
-                      placeholder="admin@library.edu"
-                      className="glass-card"
-                      required
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="admin-password">Password</Label>
-                    <div className="relative">
-                      <Input
-                        id="admin-password"
-                        type={showPassword ? "text" : "password"}
-                        placeholder="Enter admin password"
-                        className="glass-card pr-10"
-                        required
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                        onClick={() => setShowPassword(!showPassword)}
-                      >
-                        {showPassword ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
+              </div>
 
-                  <Button 
-                    type="submit" 
-                    variant="academic" 
-                    className="w-full" 
-                    disabled={isLoading}
-                  >
-                    {isLoading ? "Signing In..." : "Sign In as Admin"}
-                  </Button>
-                </form>
-              </TabsContent>
-            </Tabs>
+              <Button 
+                type="submit" 
+                variant="academic" 
+                className="w-full" 
+                disabled={isLoading}
+              >
+                {isLoading 
+                  ? (isSignUp ? "Creating Account..." : "Signing In...") 
+                  : (isSignUp ? "Create Student Account" : "Sign In")
+                }
+              </Button>
+            </form>
 
             <div className="mt-6 space-y-4">
               <div className="relative">
@@ -189,23 +226,28 @@ export const Login = () => {
                   <span className="w-full border-t border-border" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">Need Help?</span>
+                  <span className="bg-background px-2 text-muted-foreground">
+                    {isSignUp ? "Already have an account?" : "Need an account?"}
+                  </span>
                 </div>
               </div>
 
               <div className="text-center space-y-2">
-                <Link
-                  to="/forgot-password"
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setIsSignUp(!isSignUp)}
                   className="text-sm text-primary hover:underline"
                 >
-                  Forgot your password?
-                </Link>
-                <p className="text-xs text-muted-foreground">
-                  Don't have an account?{" "}
-                  <Link to="/register" className="text-primary hover:underline">
-                    Contact your librarian
-                  </Link>
-                </p>
+                  {isSignUp ? "Sign in to existing account" : "Create student account"}
+                </Button>
+                
+                {!isSignUp && (
+                  <p className="text-xs text-muted-foreground">
+                    Admin access?{" "}
+                    <span className="text-primary">Contact your librarian</span>
+                  </p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -214,7 +256,7 @@ export const Login = () => {
         {/* Footer */}
         <div className="text-center mt-6">
           <Link
-            to="/"
+            to="/home"
             className="text-sm text-muted-foreground hover:text-foreground smooth-transition"
           >
             ← Back to Home

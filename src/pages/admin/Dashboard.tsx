@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { 
   Library, 
   BookOpen, 
@@ -19,7 +18,12 @@ import {
   Clock,
   AlertCircle,
   CheckCircle,
-  Eye
+  Eye,
+  Calendar,
+  ArrowRight,
+  BarChart3,
+  Award,
+  BookMarked
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -63,10 +67,11 @@ interface Book {
   id: string;
   title: string;
   author: string;
-  isbn?: string;
+  isbn?: string | null;
   total_copies: number;
   available_copies: number;
-  category?: string;
+  category?: string | null;
+  location_shelf?: string | null;
 }
 
 export const AdminDashboard = () => {
@@ -92,7 +97,7 @@ export const AdminDashboard = () => {
     if (path.includes('/transactions')) return 'transactions';
     if (path.includes('/books')) return 'books';
     if (path.includes('/reports')) return 'reports';
-    return 'students'; // default
+    return 'overview'; // default
   };
 
   const [activeTab, setActiveTab] = useState(getActiveTab());
@@ -241,7 +246,11 @@ export const AdminDashboard = () => {
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
-    navigate(`/admin/${value === 'students' ? 'students' : value}`);
+    if (value === 'overview') {
+      navigate('/admin');
+    } else {
+      navigate(`/admin/${value}`);
+    }
   };
 
   const filteredStudents = students.filter(student =>
@@ -262,131 +271,289 @@ export const AdminDashboard = () => {
     book.isbn?.includes(searchTerm)
   );
 
+  const recentActivities = [
+    {
+      id: 1,
+      action: "Book Issued",
+      details: "Clean Code issued to Alice Smith",
+      time: "2 hours ago",
+      type: "issue",
+      icon: BookOpen
+    },
+    {
+      id: 2,
+      action: "Book Returned",
+      details: "The Great Gatsby returned by Bob Johnson",
+      time: "4 hours ago",
+      type: "return",
+      icon: CheckCircle
+    },
+    {
+      id: 3,
+      action: "New Registration",
+      details: "Carol Williams registered as student",
+      time: "1 day ago",
+      type: "registration",
+      icon: UserCheck
+    },
+    {
+      id: 4,
+      action: "Overdue Alert",
+      details: "Design Patterns overdue by 3 days",
+      time: "2 days ago",
+      type: "overdue",
+      icon: AlertCircle
+    }
+  ];
+
+  const popularBooks = [
+    {
+      title: "Clean Code",
+      author: "Robert C. Martin",
+      issueCount: 15,
+      category: "Technology",
+      availability: "Available"
+    },
+    {
+      title: "The Pragmatic Programmer",
+      author: "David Thomas",
+      issueCount: 12,
+      category: "Technology",
+      availability: "Available"
+    },
+    {
+      title: "Design Patterns",
+      author: "Gang of Four",
+      issueCount: 10,
+      category: "Technology", 
+      availability: "Unavailable"
+    },
+    {
+      title: "JavaScript: The Good Parts",
+      author: "Douglas Crockford",
+      issueCount: 8,
+      category: "Technology",
+      availability: "Available"
+    }
+  ];
+
   const statCards = [
     {
-      label: "Total Students",
-      value: stats.totalStudents.toString(),
-      change: "Registered users",
-      icon: Users,
-      color: "text-blue-600",
-      bgColor: "bg-blue-50"
-    },
-    {
-      label: "Total Books",
+      title: "Total Books",
       value: stats.totalBooks.toString(),
-      change: "In catalog",
+      change: "+12 this month",
       icon: BookOpen,
+      color: "text-blue-600",
+      bgColor: "bg-blue-50 dark:bg-blue-950"
+    },
+    {
+      title: "Active Students", 
+      value: stats.totalStudents.toString(),
+      change: "+89 this week",
+      icon: Users,
       color: "text-green-600",
-      bgColor: "bg-green-50"
+      bgColor: "bg-green-50 dark:bg-green-950"
     },
     {
-      label: "Active Loans",
+      title: "Books Issued",
       value: stats.activeTransactions.toString(),
-      change: "Currently borrowed",
-      icon: TrendingUp,
+      change: "+23 today",
+      icon: Calendar,
       color: "text-purple-600",
-      bgColor: "bg-purple-50"
+      bgColor: "bg-purple-50 dark:bg-purple-950"
     },
     {
-      label: "Overdue Books",
+      title: "Overdue Items",
       value: stats.overdueBooks.toString(),
-      change: "Need attention",
+      change: "-12 from yesterday",
       icon: AlertCircle,
       color: "text-red-600",
-      bgColor: "bg-red-50"
+      bgColor: "bg-red-50 dark:bg-red-950"
     }
   ];
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
+      {/* Enhanced Header */}
+      <header className="border-b bg-card/50 backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="w-10 h-10 academic-gradient rounded-xl flex items-center justify-center">
-                <Library className="w-6 h-6 text-white" />
+              <div className="w-12 h-12 academic-gradient rounded-2xl flex items-center justify-center glow-effect">
+                <Library className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-foreground">Admin Portal</h1>
-                <p className="text-sm text-muted-foreground">SmartLibrary Management</p>
+                <h1 className="text-2xl font-bold text-foreground">Admin Dashboard</h1>
+                <p className="text-sm text-muted-foreground">SmartLibrary Management System</p>
               </div>
             </div>
-            <Button 
-              onClick={handleSignOut}
-              disabled={isLoading}
-              variant="outline"
-              size="sm"
-              className="glass-card"
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              {isLoading ? "Signing out..." : "Sign Out"}
-            </Button>
+            
+            <div className="flex items-center space-x-3">
+              <Button variant="outline" className="library-card hover-scale">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Book
+              </Button>
+              <Button 
+                onClick={handleSignOut}
+                disabled={isLoading}
+                variant="ghost"
+                className="library-card"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                {isLoading ? "Signing out..." : "Sign Out"}
+              </Button>
+            </div>
           </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-6 space-y-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Welcome Section */}
-        <div className="text-center space-y-2">
-          <h2 className="text-2xl font-bold text-foreground">
-            Library Management Dashboard
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold text-foreground mb-2">
+            Welcome back, Admin! 👋
           </h2>
           <p className="text-muted-foreground">
-            Manage students, books, and transactions efficiently
+            Here's what's happening in your library today.
           </p>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Enhanced Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {statCards.map((stat, index) => (
-            <Card key={index} className="glass-card">
+            <Card key={index} className="library-card hover-scale animate-fade-in" style={{ animationDelay: `${index * 100}ms` }}>
               <CardContent className="p-6">
-                <div className="flex items-center justify-between space-y-0 pb-2">
-                  <p className="text-sm font-medium text-muted-foreground">
-                    {stat.label}
-                  </p>
-                  <div className={`w-8 h-8 ${stat.bgColor} rounded-lg flex items-center justify-center`}>
-                    <stat.icon className={`w-4 h-4 ${stat.color}`} />
+                <div className="flex items-center space-x-4">
+                  <div className={`w-12 h-12 ${stat.bgColor} rounded-xl flex items-center justify-center`}>
+                    <stat.icon className={`w-6 h-6 ${stat.color}`} />
                   </div>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-                  <p className="text-xs text-muted-foreground">{stat.change}</p>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
+                    <p className="text-3xl font-bold text-foreground">{stat.value}</p>
+                    <p className="text-xs text-muted-foreground">{stat.change}</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
 
-        {/* Search */}
-        <div className="flex items-center space-x-2">
-          <div className="relative flex-1 max-w-sm">
+        {/* Enhanced Search */}
+        <div className="mb-8">
+          <div className="relative max-w-md">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search students, books, or transactions..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
+              className="pl-9 library-card"
             />
           </div>
         </div>
 
-        {/* Main Content Tabs */}
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4">
+        {/* Enhanced Tabs */}
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5 library-card">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="students">Students</TabsTrigger>
             <TabsTrigger value="transactions">Transactions</TabsTrigger>
             <TabsTrigger value="books">Books</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
           </TabsList>
 
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Recent Activities */}
+              <Card className="library-card">
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Clock className="w-5 h-5" />
+                    <span>Recent Activities</span>
+                  </CardTitle>
+                  <CardDescription>Latest library transactions and events</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {recentActivities.map((activity) => (
+                      <div key={activity.id} className="flex items-center space-x-4 p-3 rounded-lg hover:bg-secondary/20 smooth-transition">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                          activity.type === 'issue' ? 'bg-blue-50 dark:bg-blue-950' :
+                          activity.type === 'return' ? 'bg-green-50 dark:bg-green-950' :
+                          activity.type === 'registration' ? 'bg-purple-50 dark:bg-purple-950' :
+                          'bg-red-50 dark:bg-red-950'
+                        }`}>
+                          <activity.icon className={`w-5 h-5 ${
+                            activity.type === 'issue' ? 'text-blue-600' :
+                            activity.type === 'return' ? 'text-green-600' :
+                            activity.type === 'registration' ? 'text-purple-600' :
+                            'text-red-600'
+                          }`} />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-foreground">{activity.action}</p>
+                          <p className="text-sm text-muted-foreground">{activity.details}</p>
+                          <p className="text-xs text-muted-foreground">{activity.time}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-6">
+                    <Button variant="outline" className="w-full">
+                      View All Activities
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Popular Books */}
+              <Card className="library-card">
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Award className="w-5 h-5" />
+                    <span>Popular Books</span>
+                  </CardTitle>
+                  <CardDescription>Most frequently issued books this month</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {popularBooks.map((book, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 rounded-lg hover:bg-secondary/20 smooth-transition">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 academic-gradient rounded-lg flex items-center justify-center text-white font-bold text-sm">
+                            {index + 1}
+                          </div>
+                          <div>
+                            <p className="font-medium text-foreground">{book.title}</p>
+                            <p className="text-sm text-muted-foreground">{book.author}</p>
+                            <p className="text-xs text-muted-foreground">{book.issueCount} times issued</p>
+                          </div>
+                        </div>
+                        <Badge variant={book.availability === "Available" ? "secondary" : "destructive"} className="text-xs">
+                          {book.availability}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-6">
+                    <Button variant="outline" className="w-full">
+                      View Full Analytics
+                      <BarChart3 className="w-4 h-4 ml-2" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Students Tab */}
           <TabsContent value="students" className="space-y-4">
-            <Card className="glass-card">
+            <Card className="library-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Users className="w-5 h-5" />
-                  Student Management
+                  Student Management ({filteredStudents.length})
                 </CardTitle>
                 <CardDescription>
                   View and manage registered students and their digital IDs
@@ -395,19 +562,26 @@ export const AdminDashboard = () => {
               <CardContent>
                 {filteredStudents.length > 0 ? (
                   <div className="space-y-4">
-                    {filteredStudents.map((student) => (
-                      <div key={student.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="space-y-1">
-                          <h4 className="font-medium text-sm">{student.full_name || "No name"}</h4>
-                          <p className="text-sm text-muted-foreground">{student.email}</p>
-                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                            <span>Joined: {new Date(student.created_at).toLocaleDateString()}</span>
-                            {student.digital_id && (
-                              <span>ID: {student.digital_id.student_number}</span>
-                            )}
+                    {filteredStudents.map((student, index) => (
+                      <div key={student.id} 
+                           className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-secondary/20 smooth-transition animate-fade-in"
+                           style={{ animationDelay: `${index * 50}ms` }}>
+                        <div className="flex items-center space-x-4">
+                          <div className="w-12 h-12 academic-gradient rounded-xl flex items-center justify-center text-white font-bold">
+                            {(student.full_name || student.email).charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-foreground">{student.full_name || "No name"}</h4>
+                            <p className="text-sm text-muted-foreground">{student.email}</p>
+                            <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1">
+                              <span>Joined: {new Date(student.created_at).toLocaleDateString()}</span>
+                              {student.digital_id && (
+                                <span>ID: {student.digital_id.student_number}</span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3">
                           {student.digital_id ? (
                             <Badge variant="secondary" className="text-xs">
                               <QrCode className="w-3 h-3 mr-1" />
@@ -418,7 +592,7 @@ export const AdminDashboard = () => {
                               No Digital ID
                             </Badge>
                           )}
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" className="hover-scale">
                             <Eye className="w-4 h-4" />
                           </Button>
                         </div>
@@ -426,21 +600,23 @@ export const AdminDashboard = () => {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8">
-                    <Users className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">No students found</p>
+                  <div className="text-center py-12">
+                    <Users className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium text-foreground mb-2">No students found</h3>
+                    <p className="text-muted-foreground">Try adjusting your search criteria</p>
                   </div>
                 )}
               </CardContent>
             </Card>
           </TabsContent>
 
+          {/* Transactions Tab */}
           <TabsContent value="transactions" className="space-y-4">
-            <Card className="glass-card">
+            <Card className="library-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <BookOpen className="w-5 h-5" />
-                  Book Transactions
+                  <BookMarked className="w-5 h-5" />
+                  Transaction Management ({filteredTransactions.length})
                 </CardTitle>
                 <CardDescription>
                   Manage book borrowing, returns, and renewals
@@ -449,31 +625,43 @@ export const AdminDashboard = () => {
               <CardContent>
                 {filteredTransactions.length > 0 ? (
                   <div className="space-y-4">
-                    {filteredTransactions.slice(0, 15).map((transaction) => (
-                      <div key={transaction.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="space-y-1">
-                          <h4 className="font-medium text-sm">{transaction.book.title}</h4>
-                          <p className="text-sm text-muted-foreground">
-                            by {transaction.book.author}
-                          </p>
-                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                            <span>Student: {transaction.student.full_name}</span>
-                            <span>
-                              {transaction.transaction_type === 'borrow' ? 'Borrowed' : 
-                               transaction.transaction_type === 'return' ? 'Returned' : 'Renewed'}: 
-                              {' '}{new Date(transaction.transaction_date).toLocaleDateString()}
-                            </span>
-                            {transaction.due_date && (
-                              <span>Due: {new Date(transaction.due_date).toLocaleDateString()}</span>
-                            )}
+                    {filteredTransactions.slice(0, 10).map((transaction, index) => (
+                      <div key={transaction.id} 
+                           className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-secondary/20 smooth-transition animate-fade-in"
+                           style={{ animationDelay: `${index * 50}ms` }}>
+                        <div className="flex items-center space-x-4">
+                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                            transaction.status === 'active' ? 'bg-blue-50 dark:bg-blue-950' :
+                            transaction.status === 'returned' ? 'bg-green-50 dark:bg-green-950' :
+                            'bg-red-50 dark:bg-red-950'
+                          }`}>
+                            <BookOpen className={`w-6 h-6 ${
+                              transaction.status === 'active' ? 'text-blue-600' :
+                              transaction.status === 'returned' ? 'text-green-600' :
+                              'text-red-600'
+                            }`} />
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-foreground">{transaction.book.title}</h4>
+                            <p className="text-sm text-muted-foreground">by {transaction.book.author}</p>
+                            <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1">
+                              <span>Student: {transaction.student.full_name}</span>
+                              <span>
+                                {transaction.transaction_type === 'borrow' ? 'Borrowed' : 'Returned'}: 
+                                {' '}{new Date(transaction.transaction_date).toLocaleDateString()}
+                              </span>
+                              {transaction.due_date && (
+                                <span>Due: {new Date(transaction.due_date).toLocaleDateString()}</span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3">
                           <Badge 
                             variant={
                               transaction.status === 'active' ? 'default' :
                               transaction.status === 'returned' ? 'secondary' :
-                              transaction.status === 'overdue' ? 'destructive' : 'outline'
+                              'destructive'
                             }
                             className="text-xs"
                           >
@@ -484,6 +672,7 @@ export const AdminDashboard = () => {
                               onClick={() => handleReturnBook(transaction.id)}
                               variant="outline" 
                               size="sm"
+                              className="hover-scale"
                             >
                               Mark Returned
                             </Button>
@@ -493,21 +682,23 @@ export const AdminDashboard = () => {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8">
-                    <BookOpen className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">No transactions found</p>
+                  <div className="text-center py-12">
+                    <BookOpen className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium text-foreground mb-2">No transactions found</h3>
+                    <p className="text-muted-foreground">No book transactions match your search</p>
                   </div>
                 )}
               </CardContent>
             </Card>
           </TabsContent>
 
+          {/* Books Tab */}
           <TabsContent value="books" className="space-y-4">
-            <Card className="glass-card">
+            <Card className="library-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Library className="w-5 h-5" />
-                  Book Catalog
+                  Book Catalog ({filteredBooks.length})
                 </CardTitle>
                 <CardDescription>
                   Manage library book inventory and availability
@@ -516,58 +707,72 @@ export const AdminDashboard = () => {
               <CardContent>
                 {filteredBooks.length > 0 ? (
                   <div className="space-y-4">
-                    {filteredBooks.slice(0, 15).map((book) => (
-                      <div key={book.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="space-y-1">
-                          <h4 className="font-medium text-sm">{book.title}</h4>
-                          <p className="text-sm text-muted-foreground">by {book.author}</p>
-                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                            {book.isbn && <span>ISBN: {book.isbn}</span>}
-                            {book.category && <span>Category: {book.category}</span>}
+                    {filteredBooks.slice(0, 12).map((book, index) => (
+                      <div key={book.id} 
+                           className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-secondary/20 smooth-transition animate-fade-in"
+                           style={{ animationDelay: `${index * 50}ms` }}>
+                        <div className="flex items-center space-x-4">
+                          <div className="w-12 h-12 academic-gradient rounded-xl flex items-center justify-center text-white font-bold">
+                            {book.title.charAt(0)}
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-foreground">{book.title}</h4>
+                            <p className="text-sm text-muted-foreground">by {book.author}</p>
+                            <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1">
+                              {book.isbn && <span>ISBN: {book.isbn}</span>}
+                              {book.category && <span>Category: {book.category}</span>}
+                              {book.location_shelf && <span>Location: {book.location_shelf}</span>}
+                            </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className="text-right text-sm">
-                            <p className="font-medium">
-                              {book.available_copies}/{book.total_copies} available
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            <p className="font-semibold text-foreground">
+                              {book.available_copies}/{book.total_copies}
                             </p>
-                            <Badge 
-                              variant={book.available_copies > 0 ? "secondary" : "destructive"}
-                              className="text-xs"
-                            >
-                              {book.available_copies > 0 ? "Available" : "Not Available"}
-                            </Badge>
+                            <p className="text-xs text-muted-foreground">available</p>
                           </div>
+                          <Badge 
+                            variant={book.available_copies > 0 ? "secondary" : "destructive"}
+                            className="text-xs"
+                          >
+                            {book.available_copies > 0 ? "Available" : "Unavailable"}
+                          </Badge>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8">
-                    <Library className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">No books found</p>
+                  <div className="text-center py-12">
+                    <Library className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium text-foreground mb-2">No books found</h3>
+                    <p className="text-muted-foreground">No books match your search criteria</p>
                   </div>
                 )}
               </CardContent>
             </Card>
           </TabsContent>
 
+          {/* Reports Tab */}
           <TabsContent value="reports" className="space-y-4">
-            <Card className="glass-card">
+            <Card className="library-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5" />
-                  Library Analytics
+                  <BarChart3 className="w-5 h-5" />
+                  Analytics & Reports
                 </CardTitle>
                 <CardDescription>
-                  View detailed reports and analytics
+                  Comprehensive library analytics and reporting
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-8">
-                  <TrendingUp className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">
-                    Detailed analytics and reporting features coming soon!
+                <div className="text-center py-16">
+                  <div className="w-20 h-20 academic-gradient rounded-3xl flex items-center justify-center mx-auto mb-6">
+                    <BarChart3 className="w-10 h-10 text-white" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-foreground mb-2">Advanced Analytics Coming Soon</h3>
+                  <p className="text-muted-foreground max-w-md mx-auto">
+                    Detailed reports including usage patterns, popular books, student activity, and performance metrics.
                   </p>
                 </div>
               </CardContent>

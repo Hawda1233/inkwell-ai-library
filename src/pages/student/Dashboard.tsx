@@ -1,312 +1,525 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Navigation } from "@/components/Navigation";
-import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
+  Library, 
   BookOpen, 
-  Calendar, 
   Clock, 
-  Download,
-  QrCode,
-  Search,
-  Star,
+  CheckCircle,
   AlertCircle,
-  CheckCircle2,
-  BookmarkPlus
+  TrendingUp,
+  LogOut,
+  QrCode,
+  User,
+  Calendar,
+  Download
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
+import QRCode from "qrcode";
+
+interface DigitalId {
+  id: string;
+  student_number: string;
+  qr_code_data: string;
+  issued_at: string;
+  is_active: boolean;
+}
+
+interface BookTransaction {
+  id: string;
+  book: {
+    title: string;
+    author: string;
+    isbn?: string;
+  };
+  transaction_type: string;
+  transaction_date: string;
+  due_date?: string;
+  status: string;
+}
+
+interface LibrarySession {
+  id: string;
+  check_in_time: string;
+  check_out_time?: string;
+  session_status: string;
+  purpose?: string;
+}
 
 export const StudentDashboard = () => {
-  const issuedBooks = [
-    {
-      title: "Data Structures and Algorithms",
-      author: "Thomas H. Cormen",
-      issueDate: "2024-01-15",
-      dueDate: "2024-02-15",
-      status: "active",
-      daysLeft: 12,
-      renewals: 1,
-      maxRenewals: 2
-    },
-    {
-      title: "Clean Code",
-      author: "Robert C. Martin",
-      issueDate: "2024-01-20",
-      dueDate: "2024-02-20",
-      status: "active",
-      daysLeft: 17,
-      renewals: 0,
-      maxRenewals: 2
-    },
-    {
-      title: "Operating System Concepts",
-      author: "Abraham Silberschatz",
-      issueDate: "2024-01-10",
-      dueDate: "2024-02-10",
-      status: "overdue",
-      daysLeft: -3,
-      renewals: 2,
-      maxRenewals: 2
-    }
-  ];
+  const [isLoading, setIsLoading] = useState(false);
+  const [digitalId, setDigitalId] = useState<DigitalId | null>(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
+  const [borrowedBooks, setBorrowedBooks] = useState<BookTransaction[]>([]);
+  const [recentActivity, setRecentActivity] = useState<BookTransaction[]>([]);
+  const [currentSession, setCurrentSession] = useState<LibrarySession | null>(null);
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
-  const recommendations = [
-    {
-      title: "Introduction to Algorithms",
-      author: "Thomas H. Cormen",
-      category: "Computer Science",
-      rating: 4.8,
-      available: true
-    },
-    {
-      title: "Design Patterns",
-      author: "Gang of Four",
-      category: "Software Engineering",
-      rating: 4.7,
-      available: true
-    },
-    {
-      title: "Computer Networks",
-      author: "Andrew S. Tanenbaum",
-      category: "Networking",
-      rating: 4.6,
-      available: false
-    }
-  ];
+  useEffect(() => {
+    fetchStudentData();
+  }, []);
 
-  const stats = {
-    totalIssued: 3,
-    totalRead: 47,
-    currentFines: 150,
-    favoriteGenre: "Computer Science"
+  const fetchStudentData = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Fetch digital ID
+      const { data: digitalIdData } = await supabase
+        .from('student_digital_ids')
+        .select('*')
+        .eq('student_id', user.id)
+        .single();
+
+      if (digitalIdData) {
+        setDigitalId(digitalIdData);
+        // Generate QR code
+        const qrUrl = await QRCode.toDataURL(digitalIdData.qr_code_data);
+        setQrCodeUrl(qrUrl);
+      }
+
+      // Fetch borrowed books
+      const { data: transactionsData } = await supabase
+        .from('book_transactions')
+        .select(`
+          *,
+          book:books(title, author, isbn)
+        `)
+        .eq('student_id', user.id)
+        .eq('status', 'active')
+        .order('transaction_date', { ascending: false });
+
+      if (transactionsData) {
+        setBorrowedBooks(transactionsData);
+      }
+
+      // Fetch recent activity
+      const { data: activityData } = await supabase
+        .from('book_transactions')
+        .select(`
+          *,
+          book:books(title, author, isbn)
+        `)
+        .eq('student_id', user.id)
+        .order('transaction_date', { ascending: false })
+        .limit(5);
+
+      if (activityData) {
+        setRecentActivity(activityData);
+      }
+
+      // Fetch current library session
+      const { data: sessionData } = await supabase
+        .from('library_sessions')
+        .select('*')
+        .eq('student_id', user.id)
+        .eq('session_status', 'active')
+        .single();
+
+      if (sessionData) {
+        setCurrentSession(sessionData);
+      }
+
+    } catch (error: any) {
+      console.error('Error fetching student data:', error);
+    }
   };
+
+  const handleSignOut = async () => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      toast({
+        title: "Signed out successfully",
+        description: "You have been logged out of your account.",
+      });
+      
+      navigate("/");
+    } catch (error: any) {
+      toast({
+        title: "Error signing out",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleLibraryCheckIn = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from('library_sessions')
+        .insert([
+          {
+            student_id: user.id,
+            purpose: 'study'
+          }
+        ]);
+
+      if (error) throw error;
+
+      toast({
+        title: "Checked in successfully",
+        description: "Welcome to the library!",
+      });
+
+      fetchStudentData();
+    } catch (error: any) {
+      toast({
+        title: "Error checking in",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleLibraryCheckOut = async () => {
+    if (!currentSession) return;
+
+    try {
+      const { error } = await supabase
+        .from('library_sessions')
+        .update({
+          check_out_time: new Date().toISOString(),
+          session_status: 'completed'
+        })
+        .eq('id', currentSession.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Checked out successfully",
+        description: "Thank you for visiting the library!",
+      });
+
+      setCurrentSession(null);
+    } catch (error: any) {
+      toast({
+        title: "Error checking out",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const downloadQRCode = () => {
+    if (!qrCodeUrl || !digitalId) return;
+
+    const link = document.createElement('a');
+    link.download = `student-id-${digitalId.student_number}.png`;
+    link.href = qrCodeUrl;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const stats = [
+    {
+      label: "Books Borrowed",
+      value: borrowedBooks.length.toString(),
+      change: "Currently active",
+      icon: BookOpen,
+      color: "text-blue-600",
+      bgColor: "bg-blue-50"
+    },
+    {
+      label: "Total Transactions",
+      value: recentActivity.length.toString(),
+      change: "All time",
+      icon: TrendingUp,
+      color: "text-green-600",
+      bgColor: "bg-green-50"
+    },
+    {
+      label: "Library Status",
+      value: currentSession ? "Checked In" : "Not In Library",
+      change: currentSession ? "Active session" : "Check in available",
+      icon: CheckCircle,
+      color: currentSession ? "text-green-600" : "text-gray-600",
+      bgColor: currentSession ? "bg-green-50" : "bg-gray-50"
+    },
+    {
+      label: "Student ID",
+      value: digitalId?.student_number || "Loading...",
+      change: "Digital ID ready",
+      icon: QrCode,
+      color: "text-purple-600",
+      bgColor: "bg-purple-50"
+    }
+  ];
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation userRole="student" />
-      
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">
-              Welcome back, Arjun! 👋
-            </h1>
-            <p className="text-muted-foreground">
-              Track your books, discover new reads, and manage your library account.
-            </p>
-          </div>
-          <div className="flex items-center space-x-3 mt-4 sm:mt-0">
-            <Button variant="outline" className="flex items-center space-x-2">
-              <QrCode className="w-4 h-4" />
-              <span>My Library ID</span>
-            </Button>
-            <Button variant="academic" className="flex items-center space-x-2">
-              <Search className="w-4 h-4" />
-              <span>Browse Catalog</span>
-            </Button>
+      {/* Header */}
+      <header className="border-b bg-card">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="w-10 h-10 academic-gradient rounded-xl flex items-center justify-center">
+                <Library className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-foreground">Student Portal</h1>
+                <p className="text-sm text-muted-foreground">SmartLibrary Dashboard</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              {currentSession ? (
+                <Button 
+                  onClick={handleLibraryCheckOut}
+                  variant="outline"
+                  size="sm"
+                  className="glass-card"
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Check Out of Library
+                </Button>
+              ) : (
+                <Button 
+                  onClick={handleLibraryCheckIn}
+                  variant="academic"
+                  size="sm"
+                >
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Check In to Library
+                </Button>
+              )}
+              <Button 
+                onClick={handleSignOut}
+                disabled={isLoading}
+                variant="outline"
+                size="sm"
+                className="glass-card"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                {isLoading ? "Signing out..." : "Sign Out"}
+              </Button>
+            </div>
           </div>
         </div>
+      </header>
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <Card className="library-card">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                  <BookOpen className="w-5 h-5 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{stats.totalIssued}</p>
-                  <p className="text-xs text-muted-foreground">Current Books</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="library-card">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
-                  <CheckCircle2 className="w-5 h-5 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{stats.totalRead}</p>
-                  <p className="text-xs text-muted-foreground">Books Read</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="library-card">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-red-100 dark:bg-red-900 rounded-lg flex items-center justify-center">
-                  <AlertCircle className="w-5 h-5 text-red-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">₹{stats.currentFines}</p>
-                  <p className="text-xs text-muted-foreground">Pending Fines</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="library-card">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
-                  <Star className="w-5 h-5 text-purple-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-foreground">{stats.favoriteGenre}</p>
-                  <p className="text-xs text-muted-foreground">Favorite Genre</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+      <div className="container mx-auto px-4 py-6 space-y-6">
+        {/* Welcome Section */}
+        <div className="text-center space-y-2">
+          <h2 className="text-2xl font-bold text-foreground">
+            Welcome back, Student!
+          </h2>
+          <p className="text-muted-foreground">
+            Your digital library portal with QR ID and book management
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Issued Books */}
-          <div className="lg:col-span-2">
-            <Card className="library-card">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <BookOpen className="w-5 h-5" />
-                  <span>My Issued Books</span>
-                </CardTitle>
-                <CardDescription>
-                  Books currently checked out to your account
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {issuedBooks.map((book, index) => (
-                    <div key={index} className="border border-border rounded-lg p-4 hover:bg-secondary/20 smooth-transition">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-grow">
-                          <h4 className="font-semibold text-foreground mb-1">{book.title}</h4>
-                          <p className="text-sm text-muted-foreground mb-2">{book.author}</p>
-                          
-                          <div className="flex items-center space-x-4 text-xs text-muted-foreground mb-3">
-                            <div className="flex items-center space-x-1">
-                              <Calendar className="w-3 h-3" />
-                              <span>Issued: {new Date(book.issueDate).toLocaleDateString()}</span>
-                            </div>
-                            <div className="flex items-center space-x-1">
-                              <Clock className="w-3 h-3" />
-                              <span>Due: {new Date(book.dueDate).toLocaleDateString()}</span>
-                            </div>
-                          </div>
-
-                          {book.status === 'overdue' ? (
-                            <div className="flex items-center space-x-2 mb-2">
-                              <Badge variant="destructive" className="text-xs">
-                                Overdue by {Math.abs(book.daysLeft)} days
-                              </Badge>
-                              <span className="text-xs text-red-600">Fine: ₹{Math.abs(book.daysLeft) * 5}</span>
-                            </div>
-                          ) : (
-                            <div className="mb-2">
-                              <Badge variant="secondary" className="text-xs">
-                                {book.daysLeft} days remaining
-                              </Badge>
-                            </div>
-                          )}
-
-                          <div className="flex items-center space-x-2 mb-2">
-                            <span className="text-xs text-muted-foreground">
-                              Renewals: {book.renewals}/{book.maxRenewals}
-                            </span>
-                            <Progress 
-                              value={(book.renewals / book.maxRenewals) * 100} 
-                              className="h-1 w-20"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="flex flex-col space-y-2 ml-4">
-                          {book.renewals < book.maxRenewals && book.status !== 'overdue' && (
-                            <Button variant="outline" size="sm">
-                              Renew
-                            </Button>
-                          )}
-                          <Button variant="ghost" size="sm">
-                            <Download className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                
-                <div className="mt-6 pt-4 border-t border-border">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Library Limit: 5 books</span>
-                    <span className="text-foreground font-medium">
-                      {issuedBooks.length}/5 books issued
-                    </span>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {stats.map((stat, index) => (
+            <Card key={index} className="glass-card">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between space-y-0 pb-2">
+                  <p className="text-sm font-medium text-muted-foreground">
+                    {stat.label}
+                  </p>
+                  <div className={`w-8 h-8 ${stat.bgColor} rounded-lg flex items-center justify-center`}>
+                    <stat.icon className={`w-4 h-4 ${stat.color}`} />
                   </div>
-                  <Progress value={(issuedBooks.length / 5) * 100} className="mt-2" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-2xl font-bold text-foreground">{stat.value}</p>
+                  <p className="text-xs text-muted-foreground">{stat.change}</p>
                 </div>
               </CardContent>
             </Card>
-          </div>
+          ))}
+        </div>
 
-          {/* Recommendations */}
-          <div className="lg:col-span-1">
-            <Card className="library-card">
+        {/* Main Content Tabs */}
+        <Tabs defaultValue="books" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="books">My Books</TabsTrigger>
+            <TabsTrigger value="digitalid">Digital ID</TabsTrigger>
+            <TabsTrigger value="activity">Activity</TabsTrigger>
+            <TabsTrigger value="browse">Browse Books</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="books" className="space-y-4">
+            <Card className="glass-card">
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Star className="w-5 h-5" />
-                  <span>Recommended for You</span>
+                <CardTitle className="flex items-center gap-2">
+                  <BookOpen className="w-5 h-5" />
+                  Currently Borrowed Books
                 </CardTitle>
                 <CardDescription>
-                  Based on your reading history
+                  Books you have checked out from the library
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {recommendations.map((book, index) => (
-                    <div key={index} className="border border-border rounded-lg p-3 hover:bg-secondary/20 smooth-transition">
-                      <h4 className="font-medium text-foreground text-sm mb-1">{book.title}</h4>
-                      <p className="text-xs text-muted-foreground mb-2">{book.author}</p>
-                      
-                      <div className="flex items-center space-x-2 mb-2">
-                        <Badge variant="outline" className="text-xs px-2 py-0">
-                          {book.category}
+                {borrowedBooks.length > 0 ? (
+                  <div className="space-y-4">
+                    {borrowedBooks.map((transaction) => (
+                      <div key={transaction.id} className="flex items-start justify-between p-4 border rounded-lg">
+                        <div className="space-y-1">
+                          <h4 className="font-medium text-sm">{transaction.book.title}</h4>
+                          <p className="text-sm text-muted-foreground">{transaction.book.author}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Borrowed: {new Date(transaction.transaction_date).toLocaleDateString()}
+                          </p>
+                          {transaction.due_date && (
+                            <p className="text-xs text-muted-foreground">
+                              Due: {new Date(transaction.due_date).toLocaleDateString()}
+                            </p>
+                          )}
+                        </div>
+                        <Badge variant="secondary" className="text-xs">
+                          {transaction.status}
                         </Badge>
-                        <div className="flex items-center space-x-1">
-                          <Star className="w-3 h-3 text-yellow-500 fill-current" />
-                          <span className="text-xs text-muted-foreground">{book.rating}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <BookOpen className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">No books currently borrowed</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="digitalid" className="space-y-4">
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <QrCode className="w-5 h-5" />
+                  Your Digital Student ID
+                </CardTitle>
+                <CardDescription>
+                  Use this QR code for library check-ins and book borrowing
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {digitalId && qrCodeUrl ? (
+                  <div className="text-center space-y-6">
+                    <div className="bg-white p-8 rounded-lg mx-auto inline-block shadow-lg">
+                      <img 
+                        src={qrCodeUrl} 
+                        alt="Student QR Code" 
+                        className="w-48 h-48 mx-auto"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div className="text-left">
+                          <p className="text-muted-foreground">Student Number:</p>
+                          <p className="font-medium">{digitalId.student_number}</p>
+                        </div>
+                        <div className="text-left">
+                          <p className="text-muted-foreground">Issued:</p>
+                          <p className="font-medium">
+                            {new Date(digitalId.issued_at).toLocaleDateString()}
+                          </p>
                         </div>
                       </div>
-
-                      <div className="flex items-center justify-between">
-                        <Badge 
-                          variant={book.available ? "secondary" : "destructive"}
-                          className="text-xs"
-                        >
-                          {book.available ? "Available" : "Unavailable"}
-                        </Badge>
-                        <Button variant="ghost" size="sm" className="h-6 px-2">
-                          <BookmarkPlus className="w-3 h-3" />
-                        </Button>
-                      </div>
+                      <Button 
+                        onClick={downloadQRCode}
+                        variant="outline"
+                        className="mt-4"
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Download QR Code
+                      </Button>
                     </div>
-                  ))}
-                </div>
-                
-                <div className="mt-4">
-                  <Button variant="outline" className="w-full" size="sm">
-                    View More Recommendations
-                  </Button>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <QrCode className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">Loading your digital ID...</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="activity" className="space-y-4">
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="w-5 h-5" />
+                  Recent Activity
+                </CardTitle>
+                <CardDescription>
+                  Your recent library transactions and activities
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {recentActivity.length > 0 ? (
+                  <div className="space-y-4">
+                    {recentActivity.map((activity) => (
+                      <div key={activity.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-2 h-2 rounded-full ${
+                            activity.status === 'active' ? 'bg-blue-500' : 
+                            activity.status === 'returned' ? 'bg-green-500' : 'bg-amber-500'
+                          }`} />
+                          <div>
+                            <p className="text-sm font-medium">
+                              {activity.transaction_type === 'borrow' ? 'Borrowed' : 
+                               activity.transaction_type === 'return' ? 'Returned' : 'Renewed'} 
+                              "{activity.book.title}"
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(activity.transaction_date).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        <Badge variant="outline" className="text-xs">
+                          {activity.status}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Clock className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">No recent activity</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="browse" className="space-y-4">
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Library className="w-5 h-5" />
+                  Browse Library Catalog
+                </CardTitle>
+                <CardDescription>
+                  Explore available books in the library
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8">
+                  <Library className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">
+                    Book browsing feature coming soon! Visit the library to browse available books.
+                  </p>
                 </div>
               </CardContent>
             </Card>
-          </div>
-        </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

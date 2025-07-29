@@ -18,7 +18,9 @@ import {
   Image as ImageIcon,
   Loader2,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Languages,
+  Globe
 } from "lucide-react";
 
 interface AddBookDialogProps {
@@ -45,6 +47,7 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
   const [loading, setLoading] = useState(false);
   const [searchingISBN, setSearchingISBN] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [inputLanguage, setInputLanguage] = useState<'en' | 'mr' | 'hi'>('en');
   
   const [bookData, setBookData] = useState<BookData>({
     title: "",
@@ -274,6 +277,39 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
           </TabsList>
 
           <TabsContent value="manual" className="space-y-6 mt-6">
+            {/* Language Selection */}
+            <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+              <div className="flex items-center gap-2">
+                <Languages className="w-4 h-4" />
+                <span className="text-sm font-medium">Input Language</span>
+              </div>
+              <Select value={inputLanguage} onValueChange={(value: 'en' | 'mr' | 'hi') => setInputLanguage(value)}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="en">
+                    <div className="flex items-center gap-2">
+                      <Globe className="w-4 h-4" />
+                      English
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="mr">
+                    <div className="flex items-center gap-2">
+                      <Globe className="w-4 h-4" />
+                      मराठी (Marathi)
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="hi">
+                    <div className="flex items-center gap-2">
+                      <Globe className="w-4 h-4" />
+                      हिंदी (Hindi)
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Left Column */}
               <div className="space-y-4">
@@ -281,9 +317,14 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
                   <Label htmlFor="title">Title *</Label>
                   <Input
                     id="title"
-                    placeholder="Enter book title"
+                    placeholder={
+                      inputLanguage === 'mr' ? "पुस्तकाचे नाव प्रविष्ट करा" :
+                      inputLanguage === 'hi' ? "पुस्तक का शीर्षक दर्ज करें" :
+                      "Enter book title"
+                    }
                     value={bookData.title}
                     onChange={(e) => updateBookData('title', e.target.value)}
+                    lang={inputLanguage}
                   />
                 </div>
 
@@ -291,9 +332,14 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
                   <Label htmlFor="author">Author *</Label>
                   <Input
                     id="author"
-                    placeholder="Enter author name(s)"
+                    placeholder={
+                      inputLanguage === 'mr' ? "लेखकाचे नाव प्रविष्ट करा" :
+                      inputLanguage === 'hi' ? "लेखक का नाम दर्ज करें" :
+                      "Enter author name(s)"
+                    }
                     value={bookData.author}
                     onChange={(e) => updateBookData('author', e.target.value)}
+                    lang={inputLanguage}
                   />
                 </div>
 
@@ -430,10 +476,15 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
-                placeholder="Enter book description or summary"
+                placeholder={
+                  inputLanguage === 'mr' ? "पुस्तकाचे वर्णन किंवा सारांश प्रविष्ट करा" :
+                  inputLanguage === 'hi' ? "पुस्तक का विवरण या सारांश दर्ज करें" :
+                  "Enter book description or summary"
+                }
                 value={bookData.description}
                 onChange={(e) => updateBookData('description', e.target.value)}
                 rows={3}
+                lang={inputLanguage}
               />
             </div>
           </TabsContent>

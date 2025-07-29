@@ -51,6 +51,7 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
   const [inputLanguage, setInputLanguage] = useState<'en' | 'mr' | 'hi'>('en');
   const [showKeyboard, setShowKeyboard] = useState(false);
   const [activeField, setActiveField] = useState<keyof BookData | null>(null);
+  const [isbnSearchComplete, setIsbnSearchComplete] = useState(false);
   
   const titleInputRef = useRef<HTMLInputElement>(null);
   const authorInputRef = useRef<HTMLInputElement>(null);
@@ -140,6 +141,7 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
           title: "Book Found!",
           description: "Book details have been automatically filled",
         });
+        setIsbnSearchComplete(true);
       } else {
         toast({
           title: "Book Not Found",
@@ -571,35 +573,276 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
           </TabsContent>
 
           <TabsContent value="isbn" className="space-y-6 mt-6">
-            <div className="text-center py-8">
-              <Scan className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Quick ISBN Search</h3>
-              <p className="text-muted-foreground mb-6">
-                Enter an ISBN to automatically fetch book details from Google Books
-              </p>
-              
-              <div className="max-w-md mx-auto space-y-4">
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Enter ISBN (10 or 13 digits)"
-                    value={bookData.isbn}
-                    onChange={(e) => updateBookData('isbn', e.target.value)}
-                  />
-                  <Button onClick={searchByISBN} disabled={searchingISBN || !bookData.isbn}>
-                    {searchingISBN ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Search className="w-4 h-4" />
-                    )}
-                  </Button>
-                </div>
+            {!isbnSearchComplete ? (
+              <div className="text-center py-8">
+                <Scan className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Quick ISBN Search</h3>
+                <p className="text-muted-foreground mb-6">
+                  Enter an ISBN to automatically fetch book details from Google Books
+                </p>
                 
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <AlertCircle className="w-4 h-4" />
-                  After searching, you can edit any details before adding
+                <div className="max-w-md mx-auto space-y-4">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Enter ISBN (10 or 13 digits)"
+                      value={bookData.isbn}
+                      onChange={(e) => updateBookData('isbn', e.target.value)}
+                    />
+                    <Button onClick={searchByISBN} disabled={searchingISBN || !bookData.isbn}>
+                      {searchingISBN ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Search className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <AlertCircle className="w-4 h-4" />
+                    After searching, you can edit any details before adding
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Language Selection for ISBN Tab */}
+                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Languages className="w-4 h-4" />
+                    <span className="text-sm font-medium">Input Language</span>
+                  </div>
+                  <Select value={inputLanguage} onValueChange={(value: 'en' | 'mr' | 'hi') => setInputLanguage(value)}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="en">
+                        <div className="flex items-center gap-2">
+                          <Globe className="w-4 h-4" />
+                          English
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="mr">
+                        <div className="flex items-center gap-2">
+                          <Globe className="w-4 h-4" />
+                          मराठी (Marathi)
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="hi">
+                        <div className="flex items-center gap-2">
+                          <Globe className="w-4 h-4" />
+                          हिंदी (Hindi)
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Book Details Form */}
+                <div className="space-y-4 p-4 border rounded-lg bg-card">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold">Book Details Found</h3>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => {
+                        setIsbnSearchComplete(false);
+                        setBookData(prev => ({
+                          ...prev,
+                          title: "",
+                          author: "",
+                          publisher: "",
+                          description: "",
+                          publication_year: "",
+                          cover_image_url: "",
+                          category: ""
+                        }));
+                      }}
+                    >
+                      New Search
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Title */}
+                    <div className="space-y-2">
+                      <Label htmlFor="isbn-title">Title *</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="isbn-title"
+                          placeholder={
+                            inputLanguage === 'mr' ? "पुस्तकाचे नाव प्रविष्ट करा" :
+                            inputLanguage === 'hi' ? "पुस्तक का शीर्षक दर्ज करें" :
+                            "Enter book title"
+                          }
+                          value={bookData.title}
+                          onChange={(e) => updateBookData('title', e.target.value)}
+                          lang={inputLanguage}
+                        />
+                        {inputLanguage !== 'en' && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openKeyboard('title')}
+                          >
+                            <Languages className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Author */}
+                    <div className="space-y-2">
+                      <Label htmlFor="isbn-author">Author *</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="isbn-author"
+                          placeholder={
+                            inputLanguage === 'mr' ? "लेखकाचे नाव प्रविष्ट करा" :
+                            inputLanguage === 'hi' ? "लेखक का नाम दर्ज करें" :
+                            "Enter author name(s)"
+                          }
+                          value={bookData.author}
+                          onChange={(e) => updateBookData('author', e.target.value)}
+                          lang={inputLanguage}
+                        />
+                        {inputLanguage !== 'en' && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openKeyboard('author')}
+                          >
+                            <Languages className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Publisher */}
+                    <div className="space-y-2">
+                      <Label htmlFor="isbn-publisher">Publisher</Label>
+                      <Input
+                        id="isbn-publisher"
+                        placeholder="Enter publisher"
+                        value={bookData.publisher}
+                        onChange={(e) => updateBookData('publisher', e.target.value)}
+                      />
+                    </div>
+
+                    {/* Category */}
+                    <div className="space-y-2">
+                      <Label htmlFor="isbn-category">Category</Label>
+                      <Select value={bookData.category} onValueChange={(value) => updateBookData('category', value)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories.map((category) => (
+                            <SelectItem key={category} value={category}>
+                              {category}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Publication Year */}
+                    <div className="space-y-2">
+                      <Label htmlFor="isbn-year">Publication Year</Label>
+                      <Input
+                        id="isbn-year"
+                        type="number"
+                        placeholder="YYYY"
+                        value={bookData.publication_year}
+                        onChange={(e) => updateBookData('publication_year', e.target.value)}
+                      />
+                    </div>
+
+                    {/* Total Copies */}
+                    <div className="space-y-2">
+                      <Label htmlFor="isbn-copies">Total Copies</Label>
+                      <Input
+                        id="isbn-copies"
+                        type="number"
+                        min="1"
+                        value={bookData.total_copies}
+                        onChange={(e) => updateBookData('total_copies', e.target.value)}
+                      />
+                    </div>
+
+                    {/* Shelf Location */}
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="isbn-shelf">Shelf Location</Label>
+                      <Input
+                        id="isbn-shelf"
+                        placeholder="e.g., A-1, B-23, CS-101"
+                        value={bookData.location_shelf}
+                        onChange={(e) => updateBookData('location_shelf', e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="isbn-description">Description</Label>
+                      {inputLanguage !== 'en' && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openKeyboard('description')}
+                        >
+                          <Languages className="w-4 h-4 mr-1" />
+                          Keyboard
+                        </Button>
+                      )}
+                    </div>
+                    <Textarea
+                      id="isbn-description"
+                      placeholder={
+                        inputLanguage === 'mr' ? "पुस्तकाचे वर्णन किंवा सारांश प्रविष्ट करा" :
+                        inputLanguage === 'hi' ? "पुस्तक का विवरण या सारांश दर्ज करें" :
+                        "Enter book description or summary"
+                      }
+                      value={bookData.description}
+                      onChange={(e) => updateBookData('description', e.target.value)}
+                      rows={3}
+                      lang={inputLanguage}
+                    />
+                  </div>
+
+                  {/* Cover Image Display */}
+                  {bookData.cover_image_url && (
+                    <div className="space-y-2">
+                      <Label>Cover Image</Label>
+                      <div className="flex items-center gap-4">
+                        <img
+                          src={bookData.cover_image_url}
+                          alt="Book cover"
+                          className="w-20 h-28 object-cover rounded border"
+                        />
+                        <Badge variant="secondary" className="flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3" />
+                          Auto-fetched from Google Books
+                        </Badge>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Virtual Keyboard for ISBN Tab */}
+                {showKeyboard && inputLanguage !== 'en' && (
+                  <VirtualKeyboard
+                    language={inputLanguage}
+                    onInsert={handleKeyboardInsert}
+                    onClose={closeKeyboard}
+                  />
+                )}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="bulk" className="space-y-6 mt-6">

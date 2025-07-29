@@ -3,6 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Navigation } from "@/components/Navigation";
+import { IssueBookDialog } from "@/components/admin/IssueBookDialog";
+import { QuickActionsDialog } from "@/components/admin/QuickActionsDialog";
+import { ReportGenerator } from "@/components/admin/ReportGenerator";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -22,6 +25,9 @@ import {
 export const AdminDashboard = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [issueBookOpen, setIssueBookOpen] = useState(false);
+  const [quickActionsOpen, setQuickActionsOpen] = useState(false);
+  const [reportGeneratorOpen, setReportGeneratorOpen] = useState(false);
   const [stats, setStats] = useState({
     totalBooks: 0,
     activeStudents: 0,
@@ -258,13 +264,29 @@ export const AdminDashboard = () => {
             </p>
           </div>
           <div className="flex items-center space-x-3 mt-4 sm:mt-0">
-            <Button variant="outline" className="flex items-center space-x-2">
+            <Button 
+              variant="outline" 
+              className="flex items-center space-x-2"
+              onClick={() => setReportGeneratorOpen(true)}
+            >
               <BarChart3 className="w-4 h-4" />
               <span>Generate Report</span>
             </Button>
-            <Button variant="academic" className="flex items-center space-x-2">
+            <Button 
+              variant="academic" 
+              className="flex items-center space-x-2"
+              onClick={() => setQuickActionsOpen(true)}
+            >
               <Plus className="w-4 h-4" />
               <span>Quick Actions</span>
+            </Button>
+            <Button 
+              variant="default" 
+              className="flex items-center space-x-2"
+              onClick={() => setIssueBookOpen(true)}
+            >
+              <BookOpen className="w-4 h-4" />
+              <span>Issue Book</span>
             </Button>
           </div>
         </div>
@@ -416,6 +438,24 @@ export const AdminDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Dialogs */}
+      <IssueBookDialog
+        open={issueBookOpen}
+        onOpenChange={setIssueBookOpen}
+        onBookIssued={fetchDashboardData}
+      />
+
+      <QuickActionsDialog
+        open={quickActionsOpen}
+        onOpenChange={setQuickActionsOpen}
+        onActionComplete={fetchDashboardData}
+      />
+
+      <ReportGenerator
+        open={reportGeneratorOpen}
+        onOpenChange={setReportGeneratorOpen}
+      />
     </div>
   );
 };

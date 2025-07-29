@@ -83,7 +83,8 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
     setSearchingISBN(true);
     try {
       // Google Books API search
-      const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${bookData.isbn}`);
+      const API_KEY = "AIzaSyAEbCZLWIP2PIcJrCKwr06EGtVVHiebvvg";
+      const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${bookData.isbn}&key=${API_KEY}`);
       const data = await response.json();
       
       if (data.items && data.items.length > 0) {

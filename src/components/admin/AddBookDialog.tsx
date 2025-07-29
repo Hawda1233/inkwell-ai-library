@@ -231,30 +231,69 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
 
     setLoading(true);
     try {
-      const { error } = await supabase
+      // Check for duplicate ISBN if provided
+      if (bookData.isbn?.trim()) {
+        const { data: existingBook } = await supabase
+          .from('books')
+          .select('id, title, author')
+          .eq('isbn', bookData.isbn.trim())
+          .maybeSingle();
+
+        if (existingBook) {
+          toast({
+            title: "Duplicate ISBN Found",
+            description: `A book with this ISBN already exists: "${existingBook.title}" by ${existingBook.author}`,
+            variant: "destructive"
+          });
+          setLoading(false);
+          return;
+        }
+      }
+
+      const { data, error } = await supabase
         .from('books')
         .insert([{
           title: bookData.title.trim(),
           author: bookData.author.trim(),
-          isbn: bookData.isbn.trim() || null,
-          publisher: bookData.publisher.trim() || null,
+          isbn: bookData.isbn?.trim() || null,
+          publisher: bookData.publisher?.trim() || null,
           category: bookData.category || null,
-          description: bookData.description.trim() || null,
+          description: bookData.description?.trim() || null,
           publication_year: bookData.publication_year ? parseInt(bookData.publication_year) : null,
           total_copies: parseInt(bookData.total_copies) || 1,
           available_copies: parseInt(bookData.total_copies) || 1,
-          location_shelf: bookData.location_shelf.trim() || null,
+          location_shelf: bookData.location_shelf?.trim() || null,
           cover_image_url: bookData.cover_image_url || null
-        }]);
+        }])
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (error) {
+        // Handle specific database errors
+        if (error.code === '23505' && error.message.includes('books_isbn_key')) {
+          toast({
+            title: "Duplicate ISBN",
+            description: "A book with this ISBN already exists in the library",
+            variant: "destructive"
+          });
+        } else if (error.code === '23514') {
+          toast({
+            title: "Invalid Data",
+            description: "Please check that all data is valid and try again",
+            variant: "destructive"
+          });
+        } else {
+          throw error;
+        }
+        return;
+      }
 
       toast({
         title: "Book Added Successfully",
         description: `"${bookData.title}" has been added to the library`,
       });
 
-      // Reset form
+      // Reset form and states
       setBookData({
         title: "",
         author: "",
@@ -267,13 +306,18 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
         location_shelf: "",
         cover_image_url: ""
       });
+      setIsbnSearchComplete(false);
+      setInputLanguage('en');
+      setShowKeyboard(false);
+      setActiveField(null);
 
       onBookAdded();
       onOpenChange(false);
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Error adding book:', error);
       toast({
         title: "Failed to Add Book",
-        description: "There was an error adding the book to the library",
+        description: error.message || "There was an error adding the book to the library",
         variant: "destructive"
       });
     } finally {

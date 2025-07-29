@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 import { 
   Library, 
   BookOpen, 
@@ -14,7 +15,10 @@ import {
   QrCode,
   User,
   Calendar,
-  Download
+  Download,
+  Search,
+  Star,
+  MapPin
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -31,7 +35,7 @@ interface DigitalId {
 
 interface BookTransaction {
   id: string;
-  book: {
+  books?: {
     title: string;
     author: string;
     isbn?: string;
@@ -50,6 +54,21 @@ interface LibrarySession {
   purpose?: string;
 }
 
+interface Book {
+  id: string;
+  title: string;
+  author: string;
+  isbn?: string;
+  publisher?: string;
+  publication_year?: number;
+  category?: string;
+  description?: string;
+  total_copies: number;
+  available_copies: number;
+  location_shelf?: string;
+  cover_image_url?: string;
+}
+
 export const StudentDashboard = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [digitalId, setDigitalId] = useState<DigitalId | null>(null);
@@ -57,6 +76,10 @@ export const StudentDashboard = () => {
   const [borrowedBooks, setBorrowedBooks] = useState<BookTransaction[]>([]);
   const [recentActivity, setRecentActivity] = useState<BookTransaction[]>([]);
   const [currentSession, setCurrentSession] = useState<LibrarySession | null>(null);
+  const [availableBooks, setAvailableBooks] = useState<Book[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [studentProfile, setStudentProfile] = useState<any>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -68,6 +91,17 @@ export const StudentDashboard = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+
+      // Fetch student profile
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (profile) {
+        setStudentProfile(profile);
+      }
 
       // Fetch digital ID
       const { data: digitalIdData } = await supabase
@@ -88,7 +122,7 @@ export const StudentDashboard = () => {
         .from('book_transactions')
         .select(`
           *,
-          book:books(title, author, isbn)
+          books(title, author, isbn)
         `)
         .eq('student_id', user.id)
         .eq('status', 'active')
@@ -103,11 +137,11 @@ export const StudentDashboard = () => {
         .from('book_transactions')
         .select(`
           *,
-          book:books(title, author, isbn)
+          books(title, author, isbn)
         `)
         .eq('student_id', user.id)
         .order('transaction_date', { ascending: false })
-        .limit(5);
+        .limit(10);
 
       if (activityData) {
         setRecentActivity(activityData);
@@ -123,6 +157,17 @@ export const StudentDashboard = () => {
 
       if (sessionData) {
         setCurrentSession(sessionData);
+      }
+
+      // Fetch available books for browsing
+      const { data: booksData } = await supabase
+        .from('books')
+        .select('*')
+        .gt('available_copies', 0)
+        .order('created_at', { ascending: false });
+
+      if (booksData) {
+        setAvailableBooks(booksData);
       }
 
     } catch (error: any) {
@@ -234,6 +279,18 @@ export const StudentDashboard = () => {
     document.body.removeChild(link);
   };
 
+  // Filter books based on search and category
+  const filteredBooks = availableBooks.filter(book => {
+    const matchesSearch = book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         book.author.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         book.isbn?.includes(searchTerm);
+    const matchesCategory = selectedCategory === "all" || book.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  // Get unique categories for filter
+  const categories = ["all", ...new Set(availableBooks.map(book => book.category).filter(Boolean))];
+
   const stats = [
     {
       label: "Books Borrowed",
@@ -324,7 +381,7 @@ export const StudentDashboard = () => {
         {/* Welcome Section */}
         <div className="text-center space-y-2">
           <h2 className="text-2xl font-bold text-foreground">
-            Welcome back, Student!
+            Welcome back, {studentProfile?.full_name || 'Student'}!
           </h2>
           <p className="text-muted-foreground">
             Your digital library portal with QR ID and book management
@@ -376,25 +433,29 @@ export const StudentDashboard = () => {
               <CardContent>
                 {borrowedBooks.length > 0 ? (
                   <div className="space-y-4">
-                    {borrowedBooks.map((transaction) => (
-                      <div key={transaction.id} className="flex items-start justify-between p-4 border rounded-lg">
-                        <div className="space-y-1">
-                          <h4 className="font-medium text-sm">{transaction.book.title}</h4>
-                          <p className="text-sm text-muted-foreground">{transaction.book.author}</p>
-                          <p className="text-xs text-muted-foreground">
-                            Borrowed: {new Date(transaction.transaction_date).toLocaleDateString()}
-                          </p>
-                          {transaction.due_date && (
-                            <p className="text-xs text-muted-foreground">
-                              Due: {new Date(transaction.due_date).toLocaleDateString()}
-                            </p>
-                          )}
-                        </div>
-                        <Badge variant="secondary" className="text-xs">
-                          {transaction.status}
-                        </Badge>
-                      </div>
-                    ))}
+                     {borrowedBooks.map((transaction) => (
+                       <div key={transaction.id} className="flex items-start justify-between p-4 border rounded-lg">
+                         <div className="space-y-1">
+                           <h4 className="font-medium text-sm">{transaction.books?.title}</h4>
+                           <p className="text-sm text-muted-foreground">{transaction.books?.author}</p>
+                           <p className="text-xs text-muted-foreground">
+                             Borrowed: {new Date(transaction.transaction_date).toLocaleDateString()}
+                           </p>
+                           {transaction.due_date && (
+                             <p className={`text-xs ${new Date(transaction.due_date) < new Date() ? 'text-red-600 font-medium' : 'text-muted-foreground'}`}>
+                               Due: {new Date(transaction.due_date).toLocaleDateString()}
+                               {new Date(transaction.due_date) < new Date() && " (OVERDUE)"}
+                             </p>
+                           )}
+                         </div>
+                         <Badge 
+                           variant={new Date(transaction.due_date || '') < new Date() ? "destructive" : "secondary"} 
+                           className="text-xs"
+                         >
+                           {new Date(transaction.due_date || '') < new Date() ? 'overdue' : transaction.status}
+                         </Badge>
+                       </div>
+                     ))}
                   </div>
                 ) : (
                   <div className="text-center py-8">
@@ -481,16 +542,16 @@ export const StudentDashboard = () => {
                             activity.status === 'active' ? 'bg-blue-500' : 
                             activity.status === 'returned' ? 'bg-green-500' : 'bg-amber-500'
                           }`} />
-                          <div>
-                            <p className="text-sm font-medium">
-                              {activity.transaction_type === 'borrow' ? 'Borrowed' : 
-                               activity.transaction_type === 'return' ? 'Returned' : 'Renewed'} 
-                              "{activity.book.title}"
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(activity.transaction_date).toLocaleDateString()}
-                            </p>
-                          </div>
+                           <div>
+                             <p className="text-sm font-medium">
+                               {activity.transaction_type === 'borrow' ? 'Borrowed' : 
+                                activity.transaction_type === 'return' ? 'Returned' : 'Renewed'} 
+                               "{activity.books?.title}"
+                             </p>
+                             <p className="text-xs text-muted-foreground">
+                               {new Date(activity.transaction_date).toLocaleDateString()}
+                             </p>
+                           </div>
                         </div>
                         <Badge variant="outline" className="text-xs">
                           {activity.status}
@@ -516,16 +577,84 @@ export const StudentDashboard = () => {
                   Browse Library Catalog
                 </CardTitle>
                 <CardDescription>
-                  Explore available books in the library
+                  Explore available books in the library - {filteredBooks.length} books available
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <Library className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">
-                    Book browsing feature coming soon! Visit the library to browse available books.
-                  </p>
+              <CardContent className="space-y-4">
+                {/* Search and Filter Controls */}
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search books, authors, or ISBN..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="px-3 py-2 border rounded-md bg-background"
+                  >
+                    {categories.map(category => (
+                      <option key={category} value={category}>
+                        {category === "all" ? "All Categories" : category}
+                      </option>
+                    ))}
+                  </select>
                 </div>
+
+                {/* Books Grid */}
+                {filteredBooks.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
+                    {filteredBooks.map((book) => (
+                      <div key={book.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                        <div className="space-y-2">
+                          <div className="flex items-start justify-between">
+                            <h4 className="font-medium text-sm line-clamp-2">{book.title}</h4>
+                            <Badge variant="outline" className="text-xs ml-2">
+                              {book.available_copies} available
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground">{book.author}</p>
+                          {book.category && (
+                            <div className="flex items-center gap-1">
+                              <Star className="w-3 h-3 text-amber-500" />
+                              <span className="text-xs text-muted-foreground">{book.category}</span>
+                            </div>
+                          )}
+                          {book.location_shelf && (
+                            <div className="flex items-center gap-1">
+                              <MapPin className="w-3 h-3 text-blue-500" />
+                              <span className="text-xs text-muted-foreground">Shelf: {book.location_shelf}</span>
+                            </div>
+                          )}
+                          {book.publication_year && (
+                            <p className="text-xs text-muted-foreground">Published: {book.publication_year}</p>
+                          )}
+                          {book.description && (
+                            <p className="text-xs text-muted-foreground line-clamp-2">{book.description}</p>
+                          )}
+                          <div className="pt-2">
+                            <Button size="sm" variant="outline" className="w-full text-xs">
+                              Request Book
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Search className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">
+                      {searchTerm || selectedCategory !== "all" 
+                        ? "No books found matching your criteria" 
+                        : "No books available at the moment"}
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

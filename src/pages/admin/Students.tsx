@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Users, Search, Plus, Filter, Download, Mail, Phone, RefreshCw } from "lucide-react";
+import { Users, Search, Plus, Filter, Download, Mail, QrCode, RefreshCw } from "lucide-react";
 
 interface Student {
   id: string;
@@ -15,6 +15,8 @@ interface Student {
   full_name: string;
   created_at: string;
   booksIssued?: number;
+  student_number?: string;
+  digital_id_active?: boolean;
 }
 
 export const Students = () => {
@@ -50,6 +52,14 @@ export const Students = () => {
 
       if (profilesError) throw profilesError;
 
+      // Get digital IDs for students
+      const { data: digitalIds, error: digitalIdsError } = await supabase
+        .from('student_digital_ids')
+        .select('student_id, student_number, is_active')
+        .in('student_id', studentIds);
+
+      if (digitalIdsError) throw digitalIdsError;
+
       // Get book transactions for each student to count issued books
       const { data: transactions, error: transactionsError } = await supabase
         .from('book_transactions')
@@ -65,11 +75,22 @@ export const Students = () => {
         return acc;
       }, {}) || {};
 
+      // Create digital ID lookup
+      const digitalIdLookup = digitalIds?.reduce((acc: any, digitalId) => {
+        acc[digitalId.student_id] = digitalId;
+        return acc;
+      }, {}) || {};
+
       // Combine data
-      const studentsData = profiles?.map(profile => ({
-        ...profile,
-        booksIssued: booksIssuedCount[profile.id] || 0
-      })) || [];
+      const studentsData = profiles?.map(profile => {
+        const digitalId = digitalIdLookup[profile.id];
+        return {
+          ...profile,
+          booksIssued: booksIssuedCount[profile.id] || 0,
+          student_number: digitalId?.student_number || null,
+          digital_id_active: digitalId?.is_active || false
+        };
+      }) || [];
 
       setStudents(studentsData);
 
@@ -131,7 +152,8 @@ export const Students = () => {
     return (
       student.full_name?.toLowerCase().includes(query) ||
       student.email?.toLowerCase().includes(query) ||
-      student.id.toLowerCase().includes(query)
+      student.id.toLowerCase().includes(query) ||
+      student.student_number?.toLowerCase().includes(query)
     );
   });
 
@@ -192,7 +214,7 @@ export const Students = () => {
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search students by name, ID, or email..."
+                  placeholder="Search students by name, ID, email, or student number..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
@@ -266,9 +288,23 @@ export const Students = () => {
                       <Mail className="w-4 h-4 text-muted-foreground" />
                       <span className="text-muted-foreground">{student.email}</span>
                     </div>
+                    {student.student_number && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <QrCode className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">ID: {student.student_number}</span>
+                      </div>
+                    )}
                     <div className="text-sm">
                       <p><span className="font-medium">Joined:</span> {new Date(student.created_at).toLocaleDateString()}</p>
                       <p><span className="font-medium">Books Issued:</span> {student.booksIssued || 0}</p>
+                      {student.student_number && (
+                        <p>
+                          <span className="font-medium">Digital ID:</span>{' '}
+                          <Badge variant={student.digital_id_active ? "default" : "destructive"} className="text-xs">
+                            {student.digital_id_active ? "Active" : "Inactive"}
+                          </Badge>
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="flex gap-2 mt-4">

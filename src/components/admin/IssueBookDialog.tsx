@@ -45,10 +45,26 @@ export const IssueBookDialog = ({ open, onOpenChange, onBookIssued }: IssueBookD
     }
 
     try {
-      // Search by email, name, or student number
+      // First, get all students with the 'student' role
+      const { data: studentRoles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'student');
+
+      if (rolesError) throw rolesError;
+
+      if (!studentRoles?.length) {
+        setStudents([]);
+        return;
+      }
+
+      const studentIds = studentRoles.map(role => role.user_id);
+
+      // Search by email, name
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('id, email, full_name')
+        .in('id', studentIds)
         .or(`email.ilike.%${query}%,full_name.ilike.%${query}%`);
 
       if (profilesError) throw profilesError;
@@ -70,12 +86,9 @@ export const IssueBookDialog = ({ open, onOpenChange, onBookIssued }: IssueBookD
       if (studentNumberError) throw studentNumberError;
 
       // Combine all student IDs
-      const allStudentIds = [
-        ...new Set([
-          ...digitalIds?.map(d => d.student_id) || [],
-          ...byStudentNumber?.map(d => d.student_id) || []
-        ])
-      ];
+      const profileIds = profilesData?.map(p => p.id) || [];
+      const numberSearchIds = byStudentNumber?.map(d => d.student_id) || [];
+      const allStudentIds = [...new Set([...profileIds, ...numberSearchIds])];
 
       // Get profile details for all found students
       const { data: allProfiles, error: allProfilesError } = await supabase
@@ -91,7 +104,7 @@ export const IssueBookDialog = ({ open, onOpenChange, onBookIssued }: IssueBookD
           .find(d => d.student_id === profile.id);
         return {
           ...profile,
-          student_number: digitalId?.student_number || ''
+          student_number: digitalId?.student_number || 'No Digital ID'
         };
       }) || [];
 

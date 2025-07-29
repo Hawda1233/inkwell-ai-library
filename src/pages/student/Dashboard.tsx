@@ -131,6 +131,16 @@ export const StudentDashboard = () => {
   };
 
   const handleSignOut = async () => {
+    // Check if student has any borrowed books before allowing sign out
+    if (borrowedBooks.length > 0) {
+      toast({
+        title: "Cannot sign out",
+        description: "Please return all borrowed books before signing out.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
       const { error } = await supabase.auth.signOut();

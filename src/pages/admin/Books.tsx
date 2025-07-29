@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Navigation } from "@/components/Navigation";
 import { AddBookDialog } from "@/components/admin/AddBookDialog";
+import { EditBookDialog } from "@/components/admin/EditBookDialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +47,8 @@ export const Books = () => {
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [addBookOpen, setAddBookOpen] = useState(false);
+  const [editBookOpen, setEditBookOpen] = useState(false);
+  const [selectedBook, setSelectedBook] = useState<Book | null>(null);
 
   const categories = [
     "Computer Science", "Engineering", "Mathematics", "Physics", "Chemistry",
@@ -76,6 +79,28 @@ export const Books = () => {
 
   useEffect(() => {
     fetchBooks();
+
+    // Set up real-time subscription for book changes
+    const channel = supabase
+      .channel('books-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'books'
+        },
+        (payload) => {
+          console.log('Book change detected:', payload);
+          // Refetch books on any change
+          fetchBooks();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const filteredBooks = books.filter((book) => {
@@ -361,7 +386,15 @@ export const Books = () => {
                     </div>
                     
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm" className="flex-1">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1"
+                        onClick={() => {
+                          setSelectedBook(book);
+                          setEditBookOpen(true);
+                        }}
+                      >
                         <Edit className="w-3 h-3 mr-1" />
                         Edit
                       </Button>
@@ -390,6 +423,13 @@ export const Books = () => {
         open={addBookOpen}
         onOpenChange={setAddBookOpen}
         onBookAdded={fetchBooks}
+      />
+
+      <EditBookDialog
+        book={selectedBook}
+        open={editBookOpen}
+        onOpenChange={setEditBookOpen}
+        onBookUpdated={fetchBooks}
       />
     </div>
   );

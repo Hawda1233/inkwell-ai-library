@@ -23,6 +23,7 @@ import {
   Globe
 } from "lucide-react";
 import { VirtualKeyboard } from "./VirtualKeyboard";
+import { BulkImport } from "./BulkImport";
 
 interface AddBookDialogProps {
   open: boolean;
@@ -173,21 +174,49 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
       return;
     }
 
+    // Check file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File Too Large",
+        description: "Please select an image smaller than 5MB",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setUploadingImage(true);
     try {
-      // For now, we'll use a placeholder URL. In a real implementation,
-      // you'd upload to Supabase Storage or another service
-      const imageUrl = URL.createObjectURL(file);
-      updateBookData('cover_image_url', imageUrl);
+      // Generate unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `covers/${fileName}`;
+
+      // Upload to Supabase Storage
+      const { data, error } = await supabase.storage
+        .from('book-covers')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (error) throw error;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('book-covers')
+        .getPublicUrl(filePath);
+
+      updateBookData('cover_image_url', publicUrl);
       
       toast({
         title: "Image Uploaded",
-        description: "Cover image has been set successfully",
+        description: "Cover image has been uploaded successfully",
       });
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Upload error:', error);
       toast({
         title: "Upload Failed",
-        description: "Could not upload image",
+        description: error.message || "Could not upload image",
         variant: "destructive"
       });
     } finally {
@@ -890,25 +919,7 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
           </TabsContent>
 
           <TabsContent value="bulk" className="space-y-6 mt-6">
-            <div className="text-center py-8">
-              <FileSpreadsheet className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Bulk Import (Coming Soon)</h3>
-              <p className="text-muted-foreground mb-6">
-                Import multiple books from CSV files with automatic validation
-              </p>
-              
-              <div className="space-y-4">
-                <Button variant="outline" disabled>
-                  <Upload className="w-4 h-4 mr-2" />
-                  Upload CSV File
-                </Button>
-                
-                <div className="text-sm text-muted-foreground">
-                  <p>Supported format: Title, Author, ISBN, Publisher, Category, Copies</p>
-                  <p>This feature will be available in the next update</p>
-                </div>
-              </div>
-            </div>
+            <BulkImport onImportComplete={onBookAdded} />
           </TabsContent>
         </Tabs>
 

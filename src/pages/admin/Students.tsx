@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { Navigation } from "@/components/Navigation";
+import { AddStudentDialog } from "@/components/admin/AddStudentDialog";
+import { ViewStudentDialog } from "@/components/admin/ViewStudentDialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +26,9 @@ export const Students = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
+  const [addStudentOpen, setAddStudentOpen] = useState(false);
+  const [viewStudentOpen, setViewStudentOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
   const fetchStudents = async () => {
     try {
@@ -201,7 +206,10 @@ export const Students = () => {
             <h1 className="text-3xl font-bold text-foreground">Students Management</h1>
             <p className="text-muted-foreground">Manage student accounts and library access</p>
           </div>
-          <Button className="flex items-center gap-2">
+          <Button 
+            className="flex items-center gap-2"
+            onClick={() => setAddStudentOpen(true)}
+          >
             <Plus className="w-4 h-4" />
             Add New Student
           </Button>
@@ -220,11 +228,24 @@ export const Students = () => {
                   className="pl-10"
                 />
               </div>
-              <Button variant="outline" className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                className="flex items-center gap-2"
+                onClick={() => {
+                  toast({
+                    title: "Filters Coming Soon",
+                    description: "Advanced filtering options will be available soon.",
+                  });
+                }}
+              >
                 <Filter className="w-4 h-4" />
                 Filters
               </Button>
-              <Button variant="outline" className="flex items-center gap-2" onClick={exportStudents}>
+              <Button 
+                variant="outline" 
+                className="flex items-center gap-2" 
+                onClick={exportStudents}
+              >
                 <Download className="w-4 h-4" />
                 Export
               </Button>
@@ -252,7 +273,7 @@ export const Students = () => {
                 }
               </p>
               {students.length === 0 && (
-                <Button>
+                <Button onClick={() => setAddStudentOpen(true)}>
                   <Plus className="w-4 h-4 mr-2" />
                   Invite Students
                 </Button>
@@ -294,24 +315,40 @@ export const Students = () => {
                         <span className="text-muted-foreground">ID: {student.student_number}</span>
                       </div>
                     )}
-                    <div className="text-sm">
+                    <div className="text-sm space-y-1">
                       <p><span className="font-medium">Joined:</span> {new Date(student.created_at).toLocaleDateString()}</p>
                       <p><span className="font-medium">Books Issued:</span> {student.booksIssued || 0}</p>
                       {student.student_number && (
-                        <p>
-                          <span className="font-medium">Digital ID:</span>{' '}
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">Digital ID:</span>
                           <Badge variant={student.digital_id_active ? "default" : "destructive"} className="text-xs">
                             {student.digital_id_active ? "Active" : "Inactive"}
                           </Badge>
-                        </p>
+                        </div>
                       )}
                     </div>
                   </div>
                   <div className="flex gap-2 mt-4">
-                    <Button variant="outline" size="sm" className="flex-1">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1"
+                      onClick={() => {
+                        setSelectedStudent(student);
+                        setViewStudentOpen(true);
+                      }}
+                    >
                       Edit
                     </Button>
-                    <Button variant="outline" size="sm" className="flex-1">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1"
+                      onClick={() => {
+                        setSelectedStudent(student);
+                        setViewStudentOpen(true);
+                      }}
+                    >
                       View Profile
                     </Button>
                   </div>
@@ -321,6 +358,20 @@ export const Students = () => {
           </div>
         )}
       </div>
+
+      {/* Dialogs */}
+      <AddStudentDialog
+        open={addStudentOpen}
+        onOpenChange={setAddStudentOpen}
+        onStudentAdded={fetchStudents}
+      />
+
+      <ViewStudentDialog
+        student={selectedStudent}
+        open={viewStudentOpen}
+        onOpenChange={setViewStudentOpen}
+        onStudentUpdated={fetchStudents}
+      />
     </div>
   );
 };

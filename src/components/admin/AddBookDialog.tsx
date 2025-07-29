@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,7 @@ import {
   Languages,
   Globe
 } from "lucide-react";
+import { VirtualKeyboard } from "./VirtualKeyboard";
 
 interface AddBookDialogProps {
   open: boolean;
@@ -48,7 +49,12 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
   const [searchingISBN, setSearchingISBN] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [inputLanguage, setInputLanguage] = useState<'en' | 'mr' | 'hi'>('en');
+  const [showKeyboard, setShowKeyboard] = useState(false);
+  const [activeField, setActiveField] = useState<keyof BookData | null>(null);
   
+  const titleInputRef = useRef<HTMLInputElement>(null);
+  const authorInputRef = useRef<HTMLInputElement>(null);
+  const descriptionInputRef = useRef<HTMLTextAreaElement>(null);
   const [bookData, setBookData] = useState<BookData>({
     title: "",
     author: "",
@@ -71,6 +77,32 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
 
   const updateBookData = (field: keyof BookData, value: string) => {
     setBookData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleKeyboardInsert = (text: string) => {
+    if (!activeField) return;
+    
+    if (text === '') {
+      // Backspace functionality
+      const currentValue = bookData[activeField];
+      const newValue = currentValue.slice(0, -1);
+      updateBookData(activeField, newValue);
+    } else {
+      // Insert text
+      const currentValue = bookData[activeField];
+      updateBookData(activeField, currentValue + text);
+    }
+  };
+
+  const openKeyboard = (field: keyof BookData) => {
+    if (inputLanguage === 'en') return;
+    setActiveField(field);
+    setShowKeyboard(true);
+  };
+
+  const closeKeyboard = () => {
+    setShowKeyboard(false);
+    setActiveField(null);
   };
 
   const searchByISBN = async () => {
@@ -315,32 +347,58 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="title">Title *</Label>
-                  <Input
-                    id="title"
-                    placeholder={
-                      inputLanguage === 'mr' ? "पुस्तकाचे नाव प्रविष्ट करा" :
-                      inputLanguage === 'hi' ? "पुस्तक का शीर्षक दर्ज करें" :
-                      "Enter book title"
-                    }
-                    value={bookData.title}
-                    onChange={(e) => updateBookData('title', e.target.value)}
-                    lang={inputLanguage}
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      ref={titleInputRef}
+                      id="title"
+                      placeholder={
+                        inputLanguage === 'mr' ? "पुस्तकाचे नाव प्रविष्ट करा" :
+                        inputLanguage === 'hi' ? "पुस्तक का शीर्षक दर्ज करें" :
+                        "Enter book title"
+                      }
+                      value={bookData.title}
+                      onChange={(e) => updateBookData('title', e.target.value)}
+                      lang={inputLanguage}
+                    />
+                    {inputLanguage !== 'en' && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openKeyboard('title')}
+                      >
+                        <Languages className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="author">Author *</Label>
-                  <Input
-                    id="author"
-                    placeholder={
-                      inputLanguage === 'mr' ? "लेखकाचे नाव प्रविष्ट करा" :
-                      inputLanguage === 'hi' ? "लेखक का नाम दर्ज करें" :
-                      "Enter author name(s)"
-                    }
-                    value={bookData.author}
-                    onChange={(e) => updateBookData('author', e.target.value)}
-                    lang={inputLanguage}
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      ref={authorInputRef}
+                      id="author"
+                      placeholder={
+                        inputLanguage === 'mr' ? "लेखकाचे नाव प्रविष्ट करा" :
+                        inputLanguage === 'hi' ? "लेखक का नाम दर्ज करें" :
+                        "Enter author name(s)"
+                      }
+                      value={bookData.author}
+                      onChange={(e) => updateBookData('author', e.target.value)}
+                      lang={inputLanguage}
+                    />
+                    {inputLanguage !== 'en' && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openKeyboard('author')}
+                      >
+                        <Languages className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -473,8 +531,22 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="description">Description</Label>
+                {inputLanguage !== 'en' && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openKeyboard('description')}
+                  >
+                    <Languages className="w-4 h-4 mr-1" />
+                    Keyboard
+                  </Button>
+                )}
+              </div>
               <Textarea
+                ref={descriptionInputRef}
                 id="description"
                 placeholder={
                   inputLanguage === 'mr' ? "पुस्तकाचे वर्णन किंवा सारांश प्रविष्ट करा" :
@@ -487,6 +559,15 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
                 lang={inputLanguage}
               />
             </div>
+
+            {/* Virtual Keyboard */}
+            {showKeyboard && inputLanguage !== 'en' && (
+              <VirtualKeyboard
+                language={inputLanguage}
+                onInsert={handleKeyboardInsert}
+                onClose={closeKeyboard}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="isbn" className="space-y-6 mt-6">

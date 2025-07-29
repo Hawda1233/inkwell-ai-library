@@ -1,7 +1,10 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Navigation } from "@/components/Navigation";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import { 
   BookOpen, 
   Users, 
@@ -12,83 +15,234 @@ import {
   Clock,
   Plus,
   ArrowRight,
-  BarChart3
+  BarChart3,
+  RefreshCw
 } from "lucide-react";
 
 export const AdminDashboard = () => {
-  const stats = [
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalBooks: 0,
+    activeStudents: 0,
+    booksIssued: 0,
+    overdueItems: 0
+  });
+  const [recentActivities, setRecentActivities] = useState<any[]>([]);
+  const [popularBooks, setPopularBooks] = useState<any[]>([]);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+
+      // Fetch total books
+      const { data: books, error: booksError } = await supabase
+        .from('books')
+        .select('id, total_copies, available_copies');
+
+      if (booksError) throw booksError;
+
+      // Fetch active students (users with student role)
+      const { data: students, error: studentsError } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'student');
+
+      if (studentsError) throw studentsError;
+
+      // Fetch recent transactions without profiles join for now
+      const { data: transactions, error: transactionsError } = await supabase
+        .from('book_transactions')
+        .select(`
+          *,
+          books(title)
+        `)
+        .order('transaction_date', { ascending: false })
+        .limit(10);
+
+      if (transactionsError) throw transactionsError;
+
+      // Calculate stats
+      const totalBooks = books?.length || 0;
+      const totalCopies = books?.reduce((sum, book) => sum + book.total_copies, 0) || 0;
+      const availableCopies = books?.reduce((sum, book) => sum + book.available_copies, 0) || 0;
+      const booksIssued = totalCopies - availableCopies;
+
+      // Get overdue transactions (where due_date is past and status is active)
+      const { data: overdueTransactions, error: overdueError } = await supabase
+        .from('book_transactions')
+        .select('id')
+        .eq('status', 'active')
+        .lt('due_date', new Date().toISOString());
+
+      if (overdueError) throw overdueError;
+
+      setStats({
+        totalBooks,
+        activeStudents: students?.length || 0,
+        booksIssued,
+        overdueItems: overdueTransactions?.length || 0
+      });
+
+      // Process recent activities
+      const processedActivities = transactions?.map(transaction => {
+        const timeDiff = Date.now() - new Date(transaction.transaction_date).getTime();
+        const hoursAgo = Math.floor(timeDiff / (1000 * 60 * 60));
+        const daysAgo = Math.floor(hoursAgo / 24);
+        
+        let timeString;
+        if (hoursAgo < 1) {
+          timeString = "Just now";
+        } else if (hoursAgo < 24) {
+          timeString = `${hoursAgo} hour${hoursAgo > 1 ? 's' : ''} ago`;
+        } else {
+          timeString = `${daysAgo} day${daysAgo > 1 ? 's' : ''} ago`;
+        }
+
+        return {
+          type: transaction.transaction_type,
+          student: `Student ${transaction.student_id.slice(0, 8)}`, // Use truncated ID for now
+          book: transaction.books?.title || 'Unknown Book',
+          time: timeString,
+          status: transaction.status === 'active' ? 
+            (transaction.transaction_type === 'borrow' ? 'issued' : 'returned') : 
+            transaction.status
+        };
+      }) || [];
+
+      setRecentActivities(processedActivities);
+
+      // Get popular books (most borrowed books)
+      const { data: popularBooksData, error: popularError } = await supabase
+        .from('book_transactions')
+        .select(`
+          book_id,
+          books(title, author)
+        `)
+        .eq('transaction_type', 'borrow');
+
+      if (popularError) throw popularError;
+
+      // Count borrowings per book
+      const bookCounts = popularBooksData?.reduce((acc: any, transaction) => {
+        const bookId = transaction.book_id;
+        if (!acc[bookId]) {
+          acc[bookId] = {
+            title: transaction.books?.title || 'Unknown',
+            author: transaction.books?.author || 'Unknown',
+            count: 0
+          };
+        }
+        acc[bookId].count++;
+        return acc;
+      }, {}) || {};
+
+      // Sort by count and take top 5
+      const topBooks = Object.values(bookCounts)
+        .sort((a: any, b: any) => b.count - a.count)
+        .slice(0, 5);
+
+      setPopularBooks(topBooks);
+
+    } catch (error: any) {
+      console.error('Error fetching dashboard data:', error);
+      toast({
+        title: "Error Loading Dashboard",
+        description: "Could not fetch dashboard data. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+
+    // Set up real-time subscriptions
+    const transactionChannel = supabase
+      .channel('dashboard-transactions')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'book_transactions'
+        },
+        () => {
+          fetchDashboardData();
+        }
+      )
+      .subscribe();
+
+    const booksChannel = supabase
+      .channel('dashboard-books')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'books'
+        },
+        () => {
+          fetchDashboardData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(transactionChannel);
+      supabase.removeChannel(booksChannel);
+    };
+  }, []);
+
+  const statsCards = [
     {
       title: "Total Books",
-      value: "12,847",
-      change: "+127 this month",
+      value: stats.totalBooks.toLocaleString(),
+      change: "Updated live",
       icon: BookOpen,
       color: "text-blue-600",
       bgColor: "bg-blue-50 dark:bg-blue-950"
     },
     {
       title: "Active Students",
-      value: "3,452",
-      change: "+89 this week",
+      value: stats.activeStudents.toLocaleString(),
+      change: "Registered users",
       icon: Users,
       color: "text-green-600",
       bgColor: "bg-green-50 dark:bg-green-950"
     },
     {
       title: "Books Issued",
-      value: "1,247",
-      change: "+23 today",
+      value: stats.booksIssued.toLocaleString(),
+      change: "Currently borrowed",
       icon: Calendar,
       color: "text-purple-600",
       bgColor: "bg-purple-50 dark:bg-purple-950"
     },
     {
       title: "Overdue Items",
-      value: "89",
-      change: "-12 from yesterday",
+      value: stats.overdueItems.toLocaleString(),
+      change: "Need attention",
       icon: AlertCircle,
       color: "text-red-600",
       bgColor: "bg-red-50 dark:bg-red-950"
     }
   ];
 
-  const recentActivities = [
-    {
-      type: "issue",
-      student: "Arjun Sharma",
-      book: "Data Structures and Algorithms",
-      time: "2 minutes ago",
-      status: "issued"
-    },
-    {
-      type: "return",
-      student: "Priya Patel",
-      book: "Machine Learning Basics",
-      time: "15 minutes ago",
-      status: "returned"
-    },
-    {
-      type: "overdue",
-      student: "Rahul Kumar",
-      book: "Database Management Systems",
-      time: "1 hour ago",
-      status: "overdue"
-    },
-    {
-      type: "registration",
-      student: "Sneha Gupta",
-      book: "New student registration",
-      time: "2 hours ago",
-      status: "registered"
-    }
-  ];
-
-  const popularBooks = [
-    { title: "Introduction to Algorithms", author: "Thomas H. Cormen", issued: 47 },
-    { title: "Clean Code", author: "Robert C. Martin", issued: 42 },
-    { title: "Design Patterns", author: "Gang of Four", issued: 38 },
-    { title: "Operating System Concepts", author: "Abraham Silberschatz", issued: 35 },
-    { title: "Computer Networks", author: "Andrew S. Tanenbaum", issued: 31 }
-  ];
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation userRole="admin" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex items-center justify-center h-64">
+            <RefreshCw className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -117,7 +271,7 @@ export const AdminDashboard = () => {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {stats.map((stat, index) => (
+          {statsCards.map((stat, index) => (
             <Card key={index} className="library-card">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
@@ -244,9 +398,9 @@ export const AdminDashboard = () => {
                         </p>
                       </div>
                       <div className="flex-shrink-0">
-                        <Badge variant="secondary" className="text-xs">
-                          {book.issued}
-                        </Badge>
+                         <Badge variant="secondary" className="text-xs">
+                           {(book as any).count}
+                         </Badge>
                       </div>
                     </div>
                   ))}

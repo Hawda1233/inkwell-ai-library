@@ -4,6 +4,7 @@ import { AddBookDialog } from "@/components/admin/AddBookDialog";
 import { EditBookDialog } from "@/components/admin/EditBookDialog";
 import { IssueBookDialog } from "@/components/admin/IssueBookDialog";
 import { QRScanner } from "@/components/admin/QRScanner";
+import { QRInputDialog } from "@/components/admin/QRInputDialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +24,8 @@ import {
   MoreHorizontal,
   RefreshCw,
   ScanLine,
-  Upload
+  Upload,
+  Keyboard
 } from "lucide-react";
 
 interface Book {
@@ -52,6 +54,7 @@ export const Books = () => {
   const [editBookOpen, setEditBookOpen] = useState(false);
   const [issueBookOpen, setIssueBookOpen] = useState(false);
   const [qrScannerOpen, setQrScannerOpen] = useState(false);
+  const [qrInputOpen, setQrInputOpen] = useState(false);
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [scannedStudent, setScannedStudent] = useState<any>(null);
 
@@ -215,7 +218,15 @@ export const Books = () => {
               className="flex items-center gap-2"
             >
               <ScanLine className="w-4 h-4" />
-              Scan QR to Issue
+              Camera Scan
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setQrInputOpen(true)}
+              className="flex items-center gap-2"
+            >
+              <Keyboard className="w-4 h-4" />
+              Scanner Device
             </Button>
             <Button
               onClick={() => setAddBookOpen(true)}
@@ -455,6 +466,15 @@ export const Books = () => {
       <QRScanner
         open={qrScannerOpen}
         onOpenChange={setQrScannerOpen}
+        onScan={(studentData) => {
+          setScannedStudent(studentData);
+          setIssueBookOpen(true);
+        }}
+      />
+
+      <QRInputDialog
+        open={qrInputOpen}
+        onOpenChange={setQrInputOpen}
         onScan={(studentData) => {
           setScannedStudent(studentData);
           setIssueBookOpen(true);

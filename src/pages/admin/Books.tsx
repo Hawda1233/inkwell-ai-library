@@ -3,6 +3,7 @@ import { Navigation } from "@/components/Navigation";
 import { AddBookDialog } from "@/components/admin/AddBookDialog";
 import { EditBookDialog } from "@/components/admin/EditBookDialog";
 import { IssueBookDialog } from "@/components/admin/IssueBookDialog";
+import { BookReturnDialog } from "@/components/admin/BookReturnDialog";
 import { QRScanner } from "@/components/admin/QRScanner";
 import { QRInputDialog } from "@/components/admin/QRInputDialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,8 +54,11 @@ export const Books = () => {
   const [addBookOpen, setAddBookOpen] = useState(false);
   const [editBookOpen, setEditBookOpen] = useState(false);
   const [issueBookOpen, setIssueBookOpen] = useState(false);
+  const [returnBookOpen, setReturnBookOpen] = useState(false);
   const [qrScannerOpen, setQrScannerOpen] = useState(false);
   const [qrInputOpen, setQrInputOpen] = useState(false);
+  const [issueScannerOpen, setIssueScannerOpen] = useState(false);
+  const [issueInputOpen, setIssueInputOpen] = useState(false);
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [scannedStudent, setScannedStudent] = useState<any>(null);
 
@@ -214,11 +218,27 @@ export const Books = () => {
             </Button>
             <Button
               variant="outline"
+              onClick={() => setIssueScannerOpen(true)}
+              className="flex items-center gap-2"
+            >
+              <ScanLine className="w-4 h-4" />
+              Issue Book
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setIssueInputOpen(true)}
+              className="flex items-center gap-2"
+            >
+              <Keyboard className="w-4 h-4" />
+              Issue (Scanner)
+            </Button>
+            <Button
+              variant="outline"
               onClick={() => setQrScannerOpen(true)}
               className="flex items-center gap-2"
             >
               <ScanLine className="w-4 h-4" />
-              Camera Scan
+              Return Book
             </Button>
             <Button
               variant="outline"
@@ -226,7 +246,7 @@ export const Books = () => {
               className="flex items-center gap-2"
             >
               <Keyboard className="w-4 h-4" />
-              Scanner Device
+              Return (Scanner)
             </Button>
             <Button
               onClick={() => setAddBookOpen(true)}
@@ -463,9 +483,34 @@ export const Books = () => {
         scannedStudent={scannedStudent}
       />
 
+      <BookReturnDialog
+        open={returnBookOpen}
+        onOpenChange={setReturnBookOpen}
+        onBooksReturned={fetchBooks}
+        scannedStudent={scannedStudent}
+      />
+
       <QRScanner
         open={qrScannerOpen}
         onOpenChange={setQrScannerOpen}
+        onScan={(studentData) => {
+          setScannedStudent(studentData);
+          setReturnBookOpen(true);
+        }}
+      />
+
+      <QRInputDialog
+        open={qrInputOpen}
+        onOpenChange={setQrInputOpen}
+        onScan={(studentData) => {
+          setScannedStudent(studentData);
+          setReturnBookOpen(true);
+        }}
+      />
+
+      <QRScanner
+        open={issueScannerOpen}
+        onOpenChange={setIssueScannerOpen}
         onScan={(studentData) => {
           setScannedStudent(studentData);
           setIssueBookOpen(true);
@@ -473,8 +518,8 @@ export const Books = () => {
       />
 
       <QRInputDialog
-        open={qrInputOpen}
-        onOpenChange={setQrInputOpen}
+        open={issueInputOpen}
+        onOpenChange={setIssueInputOpen}
         onScan={(studentData) => {
           setScannedStudent(studentData);
           setIssueBookOpen(true);

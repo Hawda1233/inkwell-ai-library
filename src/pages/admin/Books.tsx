@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { Navigation } from "@/components/Navigation";
 import { AddBookDialog } from "@/components/admin/AddBookDialog";
 import { EditBookDialog } from "@/components/admin/EditBookDialog";
+import { IssueBookDialog } from "@/components/admin/IssueBookDialog";
+import { QRScanner } from "@/components/admin/QRScanner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,7 +50,10 @@ export const Books = () => {
   const [loading, setLoading] = useState(true);
   const [addBookOpen, setAddBookOpen] = useState(false);
   const [editBookOpen, setEditBookOpen] = useState(false);
+  const [issueBookOpen, setIssueBookOpen] = useState(false);
+  const [qrScannerOpen, setQrScannerOpen] = useState(false);
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+  const [scannedStudent, setScannedStudent] = useState<any>(null);
 
   const categories = [
     "Computer Science", "Engineering", "Mathematics", "Physics", "Chemistry",
@@ -203,6 +208,14 @@ export const Books = () => {
             >
               <RefreshCw className="w-4 h-4" />
               Refresh
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setQrScannerOpen(true)}
+              className="flex items-center gap-2"
+            >
+              <ScanLine className="w-4 h-4" />
+              Scan QR to Issue
             </Button>
             <Button
               onClick={() => setAddBookOpen(true)}
@@ -430,6 +443,22 @@ export const Books = () => {
         open={editBookOpen}
         onOpenChange={setEditBookOpen}
         onBookUpdated={fetchBooks}
+      />
+
+      <IssueBookDialog
+        open={issueBookOpen}
+        onOpenChange={setIssueBookOpen}
+        onBookIssued={fetchBooks}
+        scannedStudent={scannedStudent}
+      />
+
+      <QRScanner
+        open={qrScannerOpen}
+        onOpenChange={setQrScannerOpen}
+        onScan={(studentData) => {
+          setScannedStudent(studentData);
+          setIssueBookOpen(true);
+        }}
       />
     </div>
   );

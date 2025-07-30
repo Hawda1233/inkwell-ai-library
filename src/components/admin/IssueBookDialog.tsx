@@ -12,6 +12,7 @@ interface IssueBookDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onBookIssued: () => void;
+  scannedStudent?: any;
 }
 
 interface Student {
@@ -28,7 +29,7 @@ interface Book {
   available_copies: number;
 }
 
-export const IssueBookDialog = ({ open, onOpenChange, onBookIssued }: IssueBookDialogProps) => {
+export const IssueBookDialog = ({ open, onOpenChange, onBookIssued, scannedStudent }: IssueBookDialogProps) => {
   const { toast } = useToast();
   const [studentQuery, setStudentQuery] = useState("");
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -195,7 +196,26 @@ export const IssueBookDialog = ({ open, onOpenChange, onBookIssued }: IssueBookD
 
   const handleOpenChange = (newOpen: boolean) => {
     if (newOpen) {
+      // When opening, load books immediately
       searchBooks();
+      
+      // If there's a scanned student, set them as selected
+      if (scannedStudent) {
+        setSelectedStudent({
+          id: scannedStudent.student_id,
+          email: scannedStudent.email,
+          full_name: scannedStudent.full_name || scannedStudent.email,
+          student_number: scannedStudent.student_number
+        });
+        setStudentQuery(scannedStudent.full_name || scannedStudent.email);
+      }
+    } else {
+      // When closing, reset form
+      setStudentQuery("");
+      setSelectedStudent(null);
+      setSelectedBookId("");
+      setStudents([]);
+      setBooks([]);
     }
     onOpenChange(newOpen);
   };

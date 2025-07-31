@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      book_reservations: {
+        Row: {
+          book_id: string
+          cancelled_at: string | null
+          expires_at: string | null
+          fulfilled_at: string | null
+          id: string
+          priority_order: number
+          reserved_at: string
+          status: string
+          student_id: string
+        }
+        Insert: {
+          book_id: string
+          cancelled_at?: string | null
+          expires_at?: string | null
+          fulfilled_at?: string | null
+          id?: string
+          priority_order?: number
+          reserved_at?: string
+          status?: string
+          student_id: string
+        }
+        Update: {
+          book_id?: string
+          cancelled_at?: string | null
+          expires_at?: string | null
+          fulfilled_at?: string | null
+          id?: string
+          priority_order?: number
+          reserved_at?: string
+          status?: string
+          student_id?: string
+        }
+        Relationships: []
+      }
       book_transactions: {
         Row: {
           book_id: string
@@ -109,6 +145,51 @@ export type Database = {
           title?: string
           total_copies?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      fines: {
+        Row: {
+          created_at: string
+          days_overdue: number
+          fine_amount: number
+          fine_per_day: number
+          id: string
+          paid_at: string | null
+          status: string
+          student_id: string
+          transaction_id: string
+          updated_at: string
+          waived_at: string | null
+          waived_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          days_overdue?: number
+          fine_amount?: number
+          fine_per_day?: number
+          id?: string
+          paid_at?: string | null
+          status?: string
+          student_id: string
+          transaction_id: string
+          updated_at?: string
+          waived_at?: string | null
+          waived_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          days_overdue?: number
+          fine_amount?: number
+          fine_per_day?: number
+          id?: string
+          paid_at?: string | null
+          status?: string
+          student_id?: string
+          transaction_id?: string
+          updated_at?: string
+          waived_at?: string | null
+          waived_by?: string | null
         }
         Relationships: []
       }
@@ -219,6 +300,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_overdue_fines: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: Database["public"]["Enums"]["app_role"]

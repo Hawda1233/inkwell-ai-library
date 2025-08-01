@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
-import { AlertTriangle, DollarSign, Book, Clock } from 'lucide-react';
+import { AlertTriangle, IndianRupee, Book, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 
 export function OverdueBooksManager() {
@@ -200,7 +200,7 @@ export function OverdueBooksManager() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Fines</CardTitle>
-            <DollarSign className="h-4 w-4 text-warning" />
+            <IndianRupee className="h-4 w-4 text-warning" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">₹{getTotalFines().toFixed(2)}</div>

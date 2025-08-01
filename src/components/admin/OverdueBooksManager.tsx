@@ -203,7 +203,7 @@ export function OverdueBooksManager() {
             <DollarSign className="h-4 w-4 text-warning" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${getTotalFines().toFixed(2)}</div>
+            <div className="text-2xl font-bold">₹{getTotalFines().toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
               Outstanding fine amounts
             </p>
@@ -312,7 +312,7 @@ export function OverdueBooksManager() {
                         )}
                       </TableCell>
                       <TableCell>
-                        {fine ? `$${fine.fine_amount}` : '-'}
+                        {fine ? `₹${fine.fine_amount}` : '-'}
                       </TableCell>
                       <TableCell>
                         {fine && fine.status === 'unpaid' && (
@@ -341,7 +341,7 @@ export function OverdueBooksManager() {
                                   </div>
                                   <div>
                                     <label className="text-sm font-medium">Fine Amount</label>
-                                    <p className="text-lg">${fine.fine_amount}</p>
+                                    <p className="text-lg">₹{fine.fine_amount}</p>
                                   </div>
                                 </div>
                               </div>

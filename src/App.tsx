@@ -11,6 +11,8 @@ import { StudentDashboard } from "./pages/student/Dashboard";
 import { Books } from "./pages/admin/Books";
 import { Students } from "./pages/admin/Students";
 import { LibrarySessions } from "./pages/admin/LibrarySessions";
+import { OverdueBooks } from "./pages/admin/OverdueBooks";
+import { Reservations } from "./pages/admin/Reservations";
 import { Analytics } from "./pages/admin/Analytics";
 import { Settings } from "./pages/admin/Settings";
 
@@ -29,6 +31,8 @@ const App = () => (
           <Route path="/admin/books" element={<Books />} />
           <Route path="/admin/students" element={<Students />} />
           <Route path="/admin/sessions" element={<LibrarySessions />} />
+          <Route path="/admin/overdue" element={<OverdueBooks />} />
+          <Route path="/admin/reservations" element={<Reservations />} />
           <Route path="/admin/analytics" element={<Analytics />} />
           <Route path="/admin/settings" element={<Settings />} />
           <Route path="/student" element={<StudentDashboard />} />

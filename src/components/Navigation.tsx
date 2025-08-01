@@ -13,7 +13,9 @@ import {
   X,
   GraduationCap,
   Library,
-  Clock
+  Clock,
+  AlertTriangle,
+  Calendar
 } from "lucide-react";
 
 interface NavigationProps {
@@ -35,6 +37,8 @@ export const Navigation = ({ userRole }: NavigationProps) => {
     { href: "/admin/books", icon: BookOpen, label: "Books" },
     { href: "/admin/students", icon: Users, label: "Students" },
     { href: "/admin/sessions", icon: Clock, label: "Sessions" },
+    { href: "/admin/overdue", icon: AlertTriangle, label: "Overdue Books" },
+    { href: "/admin/reservations", icon: Calendar, label: "Reservations" },
     { href: "/admin/analytics", icon: BarChart3, label: "Analytics" },
     { href: "/admin/settings", icon: Settings, label: "Settings" }
   ];

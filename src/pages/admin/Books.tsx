@@ -5,6 +5,7 @@ import { EditBookDialog } from "@/components/admin/EditBookDialog";
 import { IssueBookDialog } from "@/components/admin/IssueBookDialog";
 import { BookReturnDialog } from "@/components/admin/BookReturnDialog";
 import { QRScanner } from "@/components/admin/QRScanner";
+import { UniversalScanner } from "@/components/admin/UniversalScanner";
 import { QRInputDialog } from "@/components/admin/QRInputDialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -59,6 +60,8 @@ export const Books = () => {
   const [returnBookOpen, setReturnBookOpen] = useState(false);
   const [qrScannerOpen, setQrScannerOpen] = useState(false);
   const [qrInputOpen, setQrInputOpen] = useState(false);
+  const [universalScannerOpen, setUniversalScannerOpen] = useState(false);
+  const [scannerMode, setScannerMode] = useState<'issue' | 'return'>('issue');
   const [issueScannerOpen, setIssueScannerOpen] = useState(false);
   const [issueInputOpen, setIssueInputOpen] = useState(false);
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
@@ -222,11 +225,14 @@ export const Books = () => {
             </Button>
             <Button
               variant="outline"
-              onClick={() => setIssueScannerOpen(true)}
+              onClick={() => {
+                setScannerMode('issue');
+                setUniversalScannerOpen(true);
+              }}
               className="flex items-center gap-2"
             >
               <ScanLine className="w-4 h-4" />
-              Issue Book
+              Issue Book (Universal)
             </Button>
             <Button
               variant="outline"
@@ -234,15 +240,18 @@ export const Books = () => {
               className="flex items-center gap-2"
             >
               <Keyboard className="w-4 h-4" />
-              Issue (Scanner)
+              Issue (Manual)
             </Button>
             <Button
               variant="outline"
-              onClick={() => setQrScannerOpen(true)}
+              onClick={() => {
+                setScannerMode('return');
+                setUniversalScannerOpen(true);
+              }}
               className="flex items-center gap-2"
             >
               <ScanLine className="w-4 h-4" />
-              Return Book
+              Return Book (Universal)
             </Button>
             <Button
               variant="outline"
@@ -250,7 +259,7 @@ export const Books = () => {
               className="flex items-center gap-2"
             >
               <Keyboard className="w-4 h-4" />
-              Return (Scanner)
+              Return (Manual)
             </Button>
             <Button
               onClick={() => setAddBookOpen(true)}
@@ -499,6 +508,23 @@ export const Books = () => {
         scannedStudent={scannedStudent}
       />
 
+      {/* Universal Scanner - works for both issue and return */}
+      <UniversalScanner
+        open={universalScannerOpen}
+        onOpenChange={setUniversalScannerOpen}
+        onScan={(studentData) => {
+          setScannedStudent(studentData);
+          if (scannerMode === 'issue') {
+            setIssueBookOpen(true);
+          } else {
+            setReturnBookOpen(true);
+          }
+        }}
+        title={scannerMode === 'issue' ? "Issue Book - Scan Student ID" : "Return Book - Scan Student ID"}
+        description={`Scan student QR code, barcode, or use manual input to ${scannerMode} books`}
+      />
+
+      {/* Legacy scanners for backup */}
       <QRScanner
         open={qrScannerOpen}
         onOpenChange={setQrScannerOpen}

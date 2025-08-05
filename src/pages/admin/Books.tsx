@@ -61,11 +61,13 @@ export const Books = () => {
   const [qrScannerOpen, setQrScannerOpen] = useState(false);
   const [qrInputOpen, setQrInputOpen] = useState(false);
   const [universalScannerOpen, setUniversalScannerOpen] = useState(false);
+  const [bookScannerOpen, setBookScannerOpen] = useState(false);
   const [scannerMode, setScannerMode] = useState<'issue' | 'return'>('issue');
   const [issueScannerOpen, setIssueScannerOpen] = useState(false);
   const [issueInputOpen, setIssueInputOpen] = useState(false);
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [scannedStudent, setScannedStudent] = useState<any>(null);
+  const [scannedBook, setScannedBook] = useState<any>(null);
 
   const categories = [
     "Computer Science", "Engineering", "Mathematics", "Physics", "Chemistry",
@@ -161,6 +163,65 @@ export const Books = () => {
     }
   };
 
+  const handleBookScan = async (bookData: any) => {
+    try {
+      let book = null;
+      
+      // Try to find book by ISBN first
+      if (bookData.isbn) {
+        const { data } = await supabase
+          .from('books')
+          .select('*')
+          .eq('isbn', bookData.isbn)
+          .single();
+        book = data;
+      }
+      
+      // If not found by ISBN, try by book_id
+      if (!book && bookData.book_id) {
+        const { data } = await supabase
+          .from('books')
+          .select('*')
+          .eq('id', bookData.book_id)
+          .single();
+        book = data;
+      }
+      
+      // If not found by book_id, try by title
+      if (!book && bookData.title) {
+        const { data } = await supabase
+          .from('books')
+          .select('*')
+          .ilike('title', `%${bookData.title}%`)
+          .limit(1)
+          .single();
+        book = data;
+      }
+      
+      if (book) {
+        setSelectedBook(book);
+        setScannedBook(bookData);
+        toast({
+          title: "Book Found",
+          description: `"${book.title}" selected for operation.`,
+        });
+      } else {
+        toast({
+          title: "Book Not Found",
+          description: "Could not find this book in the library database.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error finding book:', error);
+      toast({
+        title: "Search Error",
+        description: "Failed to search for book in database.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const exportBooks = () => {
     const csvContent = [
       ["Title", "Author", "ISBN", "Category", "Publisher", "Year", "Total Copies", "Available", "Rack Number", "Row/Shelf", "Location Notes"],
@@ -241,6 +302,14 @@ export const Books = () => {
             >
               <Keyboard className="w-4 h-4" />
               Issue (Manual)
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setBookScannerOpen(true)}
+              className="flex items-center gap-2"
+            >
+              <ScanLine className="w-4 h-4" />
+              Scan Book Code
             </Button>
             <Button
               variant="outline"
@@ -522,6 +591,17 @@ export const Books = () => {
         }}
         title={scannerMode === 'issue' ? "Issue Book - Scan Student ID" : "Return Book - Scan Student ID"}
         description={`Scan student QR code, barcode, or use manual input to ${scannerMode} books`}
+      />
+
+      {/* Book Code Scanner */}
+      <UniversalScanner
+        open={bookScannerOpen}
+        onOpenChange={setBookScannerOpen}
+        onScan={handleBookScan}
+        onBookScan={handleBookScan}
+        title="Scan Book Code"
+        description="Scan book QR code, ISBN barcode, or enter book information manually"
+        mode="book"
       />
 
       {/* Legacy scanners for backup */}

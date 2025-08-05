@@ -25,16 +25,20 @@ interface UniversalScannerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onScan: (data: any) => void;
+  onBookScan?: (bookData: any) => void;
   title?: string;
   description?: string;
+  mode?: 'student' | 'book' | 'universal';
 }
 
 export const UniversalScanner = ({ 
   open, 
   onOpenChange, 
   onScan, 
+  onBookScan,
   title = "Universal Scanner",
-  description = "Scan QR codes and barcodes using camera, file upload, or manual input"
+  description = "Scan QR codes and barcodes for students and books",
+  mode = 'universal'
 }: UniversalScannerProps) => {
   const { toast } = useToast();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -196,36 +200,118 @@ export const UniversalScanner = ({
     try {
       // Try to parse as JSON first (for structured QR codes)
       let parsedData;
+      let isJSON = false;
+      
       try {
         parsedData = JSON.parse(text);
+        isJSON = true;
       } catch {
         // If not JSON, treat as plain text
         parsedData = { rawData: text, type: 'barcode' };
       }
       
-      // Validate if it's our student QR code format
-      if (parsedData.student_id && parsedData.student_number && parsedData.email) {
+      // Check if it's a student QR code
+      if (isJSON && parsedData.student_id && parsedData.student_number && parsedData.email) {
+        if (mode === 'book') {
+          toast({
+            title: "Student ID Detected",
+            description: "This appears to be a student ID. Please scan a book QR code or barcode.",
+            variant: "destructive"
+          });
+          setTimeout(() => setIsProcessing(false), 1000);
+          return;
+        }
+        
         onScan(parsedData);
         onOpenChange(false);
         toast({
-          title: "QR Code Scanned Successfully",
+          title: "Student ID Scanned",
           description: `Student ${parsedData.full_name || parsedData.email} selected.`,
         });
-      } else if (parsedData.rawData || typeof parsedData === 'string') {
-        // Handle other barcode types
-        onScan({ rawData: text, scannedAt: new Date().toISOString() });
+        return;
+      }
+      
+      // Check if it's a book QR code (JSON with book info)
+      if (isJSON && (parsedData.book_id || parsedData.isbn || parsedData.title)) {
+        if (mode === 'student') {
+          toast({
+            title: "Book Code Detected",
+            description: "This appears to be a book code. Please scan a student ID.",
+            variant: "destructive"
+          });
+          setTimeout(() => setIsProcessing(false), 1000);
+          return;
+        }
+        
+        if (onBookScan) {
+          onBookScan(parsedData);
+        } else {
+          onScan({ ...parsedData, type: 'book' });
+        }
         onOpenChange(false);
         toast({
-          title: "Barcode Scanned",
-          description: "Barcode data processed successfully.",
+          title: "Book Scanned",
+          description: `Book "${parsedData.title || parsedData.isbn || 'Unknown'}" selected.`,
         });
-      } else {
-        toast({
-          title: "Unknown Format",
-          description: "Scanned code format not recognized.",
-          variant: "destructive"
-        });
+        return;
       }
+      
+      // Handle plain text barcodes (could be ISBN, book ID, etc.)
+      if (text.length >= 8) {
+        // Check if it looks like an ISBN (10 or 13 digits, possibly with hyphens)
+        const cleanText = text.replace(/[-\s]/g, '');
+        const isISBN = /^(97[89])?\d{9}[\dX]$/.test(cleanText) || /^\d{10}$/.test(cleanText);
+        
+        if (isISBN) {
+          if (mode === 'student') {
+            toast({
+              title: "ISBN Detected",
+              description: "This appears to be a book ISBN. Please scan a student ID.",
+              variant: "destructive"
+            });
+            setTimeout(() => setIsProcessing(false), 1000);
+            return;
+          }
+          
+          const bookData = { 
+            isbn: cleanText, 
+            rawData: text, 
+            type: 'book',
+            scannedAt: new Date().toISOString() 
+          };
+          
+          if (onBookScan) {
+            onBookScan(bookData);
+          } else {
+            onScan(bookData);
+          }
+          onOpenChange(false);
+          toast({
+            title: "Book ISBN Scanned",
+            description: `ISBN: ${cleanText}`,
+          });
+          return;
+        }
+      }
+      
+      // Generic barcode/text handling
+      const genericData = { 
+        rawData: text, 
+        type: mode === 'student' ? 'student_code' : mode === 'book' ? 'book_code' : 'unknown',
+        scannedAt: new Date().toISOString() 
+      };
+      
+      if (mode === 'book' && onBookScan) {
+        onBookScan(genericData);
+      } else {
+        onScan(genericData);
+      }
+      onOpenChange(false);
+      toast({
+        title: mode === 'universal' ? "Code Scanned" : `${mode === 'book' ? 'Book' : 'Student'} Code Scanned`,
+        description: `Data: ${text.substring(0, 50)}${text.length > 50 ? '...' : ''}`,
+      });
+      
     } catch (error) {
       toast({
         title: "Processing Error",
@@ -581,6 +667,7 @@ export const UniversalScanner = ({
                       <li>• Works with handheld barcode scanners</li>
                       <li>• Compatible with USB/wireless scanners</li>
                       <li>• Supports keyboard wedge input</li>
+                      <li>• Scans student IDs and book codes</li>
                       <li>• Manual paste and typing supported</li>
                       <li>• Press Ctrl+Enter to submit</li>
                     </ul>
@@ -612,7 +699,7 @@ export const UniversalScanner = ({
         {/* Footer */}
         <div className="flex justify-between items-center pt-4 border-t">
           <div className="text-xs text-muted-foreground">
-            Supports QR codes, barcodes, and all major formats
+            Supports student IDs, book QR codes, ISBNs, and all major barcode formats
           </div>
           <Button variant="outline" onClick={handleClose}>
             Cancel

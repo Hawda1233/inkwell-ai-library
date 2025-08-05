@@ -41,6 +41,8 @@ interface Book {
   total_copies: number;
   available_copies: number;
   location_shelf: string | null;
+  rack_number: string | null;
+  row_shelf_number: string | null;
   cover_image_url: string | null;
   created_at: string;
 }
@@ -158,7 +160,7 @@ export const Books = () => {
 
   const exportBooks = () => {
     const csvContent = [
-      ["Title", "Author", "ISBN", "Category", "Publisher", "Year", "Total Copies", "Available", "Shelf"],
+      ["Title", "Author", "ISBN", "Category", "Publisher", "Year", "Total Copies", "Available", "Rack Number", "Row/Shelf", "Location Notes"],
       ...filteredBooks.map(book => [
         book.title,
         book.author,
@@ -168,6 +170,8 @@ export const Books = () => {
         book.publication_year || "",
         book.total_copies,
         book.available_copies,
+        book.rack_number || "",
+        book.row_shelf_number || "",
         book.location_shelf || ""
       ])
     ].map(row => row.join(",")).join("\n");
@@ -420,8 +424,13 @@ export const Books = () => {
                       {book.publication_year && (
                         <p><span className="font-medium">Year:</span> {book.publication_year}</p>
                       )}
-                      {book.location_shelf && (
-                        <p><span className="font-medium">Shelf:</span> {book.location_shelf}</p>
+                      {(book.rack_number || book.row_shelf_number || book.location_shelf) && (
+                        <div className="text-sm">
+                          <span className="font-medium">Location:</span>
+                          {book.rack_number && <span className="ml-1">Rack {book.rack_number}</span>}
+                          {book.row_shelf_number && <span className="ml-1">Row {book.row_shelf_number}</span>}
+                          {book.location_shelf && <span className="ml-1">| {book.location_shelf}</span>}
+                        </div>
                       )}
                       <p>
                         <span className="font-medium">Copies:</span> 

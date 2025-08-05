@@ -41,6 +41,8 @@ interface BookData {
   publication_year: string;
   total_copies: string;
   location_shelf: string;
+  rack_number: string;
+  row_shelf_number: string;
   cover_image_url: string;
 }
 
@@ -67,6 +69,8 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
     publication_year: "",
     total_copies: "1",
     location_shelf: "",
+    rack_number: "",
+    row_shelf_number: "",
     cover_image_url: ""
   });
 
@@ -292,6 +296,8 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
           total_copies: parseInt(bookData.total_copies) || 1,
           available_copies: parseInt(bookData.total_copies) || 1,
           location_shelf: bookData.location_shelf?.trim() || null,
+          rack_number: bookData.rack_number?.trim() || null,
+          row_shelf_number: bookData.row_shelf_number?.trim() || null,
           cover_image_url: bookData.cover_image_url || null
         }])
         .select()
@@ -333,6 +339,8 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
         publication_year: "",
         total_copies: "1",
         location_shelf: "",
+        rack_number: "",
+        row_shelf_number: "",
         cover_image_url: ""
       });
       setIsbnSearchComplete(false);
@@ -552,10 +560,30 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="location_shelf">Shelf Location</Label>
+                  <Label htmlFor="rack_number">Rack Number</Label>
+                  <Input
+                    id="rack_number"
+                    placeholder="e.g., A, B, CS"
+                    value={bookData.rack_number}
+                    onChange={(e) => updateBookData('rack_number', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="row_shelf_number">Row/Shelf Number</Label>
+                  <Input
+                    id="row_shelf_number"
+                    placeholder="e.g., 1, 23, 101"
+                    value={bookData.row_shelf_number}
+                    onChange={(e) => updateBookData('row_shelf_number', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="location_shelf">Additional Location Notes</Label>
                   <Input
                     id="location_shelf"
-                    placeholder="e.g., A-1, B-23, CS-101"
+                    placeholder="e.g., Near window, Top shelf"
                     value={bookData.location_shelf}
                     onChange={(e) => updateBookData('location_shelf', e.target.value)}
                   />
@@ -845,12 +873,34 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
                       />
                     </div>
 
-                    {/* Shelf Location */}
+                    {/* Rack Number */}
+                    <div className="space-y-2">
+                      <Label htmlFor="isbn-rack">Rack Number</Label>
+                      <Input
+                        id="isbn-rack"
+                        placeholder="e.g., A, B, CS"
+                        value={bookData.rack_number}
+                        onChange={(e) => updateBookData('rack_number', e.target.value)}
+                      />
+                    </div>
+
+                    {/* Row/Shelf Number */}
+                    <div className="space-y-2">
+                      <Label htmlFor="isbn-row">Row/Shelf Number</Label>
+                      <Input
+                        id="isbn-row"
+                        placeholder="e.g., 1, 23, 101"
+                        value={bookData.row_shelf_number}
+                        onChange={(e) => updateBookData('row_shelf_number', e.target.value)}
+                      />
+                    </div>
+
+                    {/* Additional Location Notes */}
                     <div className="space-y-2 md:col-span-2">
-                      <Label htmlFor="isbn-shelf">Shelf Location</Label>
+                      <Label htmlFor="isbn-shelf">Additional Location Notes</Label>
                       <Input
                         id="isbn-shelf"
-                        placeholder="e.g., A-1, B-23, CS-101"
+                        placeholder="e.g., Near window, Top shelf"
                         value={bookData.location_shelf}
                         onChange={(e) => updateBookData('location_shelf', e.target.value)}
                       />

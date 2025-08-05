@@ -28,6 +28,8 @@ interface Book {
   total_copies: number;
   available_copies: number;
   location_shelf: string | null;
+  rack_number: string | null;
+  row_shelf_number: string | null;
   cover_image_url: string | null;
 }
 
@@ -52,7 +54,9 @@ export const EditBookDialog = ({ book, open, onOpenChange, onBookUpdated }: Edit
     publication_year: "",
     total_copies: "",
     available_copies: "",
-    location_shelf: ""
+    location_shelf: "",
+    rack_number: "",
+    row_shelf_number: ""
   });
 
   const categories = [
@@ -74,7 +78,9 @@ export const EditBookDialog = ({ book, open, onOpenChange, onBookUpdated }: Edit
         publication_year: book.publication_year?.toString() || "",
         total_copies: book.total_copies.toString(),
         available_copies: book.available_copies.toString(),
-        location_shelf: book.location_shelf || ""
+        location_shelf: book.location_shelf || "",
+        rack_number: book.rack_number || "",
+        row_shelf_number: book.row_shelf_number || ""
       });
     }
   }, [book, open]);
@@ -160,7 +166,9 @@ export const EditBookDialog = ({ book, open, onOpenChange, onBookUpdated }: Edit
           publication_year: formData.publication_year ? parseInt(formData.publication_year) : null,
           total_copies: parseInt(formData.total_copies),
           available_copies: parseInt(formData.available_copies),
-          location_shelf: formData.location_shelf.trim() || null
+          location_shelf: formData.location_shelf.trim() || null,
+          rack_number: formData.rack_number.trim() || null,
+          row_shelf_number: formData.row_shelf_number.trim() || null
         })
         .eq('id', book.id);
 
@@ -359,14 +367,36 @@ export const EditBookDialog = ({ book, open, onOpenChange, onBookUpdated }: Edit
               />
             </div>
 
-            {/* Shelf Location */}
+            {/* Rack Number */}
+            <div className="space-y-2">
+              <Label htmlFor="edit-rack">Rack Number</Label>
+              <Input
+                id="edit-rack"
+                value={formData.rack_number}
+                onChange={(e) => handleInputChange('rack_number', e.target.value)}
+                placeholder="e.g., A, B, CS"
+              />
+            </div>
+
+            {/* Row/Shelf Number */}
+            <div className="space-y-2">
+              <Label htmlFor="edit-row">Row/Shelf Number</Label>
+              <Input
+                id="edit-row"
+                value={formData.row_shelf_number}
+                onChange={(e) => handleInputChange('row_shelf_number', e.target.value)}
+                placeholder="e.g., 1, 23, 101"
+              />
+            </div>
+
+            {/* Additional Location Notes */}
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="edit-shelf">Shelf Location</Label>
+              <Label htmlFor="edit-shelf">Additional Location Notes</Label>
               <Input
                 id="edit-shelf"
                 value={formData.location_shelf}
                 onChange={(e) => handleInputChange('location_shelf', e.target.value)}
-                placeholder="e.g., A-1, B-23, CS-101"
+                placeholder="e.g., Near window, Top shelf"
               />
             </div>
           </div>

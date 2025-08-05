@@ -110,6 +110,8 @@ export type Database = {
           location_shelf: string | null
           publication_year: number | null
           publisher: string | null
+          rack_number: string | null
+          row_shelf_number: string | null
           title: string
           total_copies: number
           updated_at: string
@@ -126,6 +128,8 @@ export type Database = {
           location_shelf?: string | null
           publication_year?: number | null
           publisher?: string | null
+          rack_number?: string | null
+          row_shelf_number?: string | null
           title: string
           total_copies?: number
           updated_at?: string
@@ -142,6 +146,8 @@ export type Database = {
           location_shelf?: string | null
           publication_year?: number | null
           publisher?: string | null
+          rack_number?: string | null
+          row_shelf_number?: string | null
           title?: string
           total_copies?: number
           updated_at?: string

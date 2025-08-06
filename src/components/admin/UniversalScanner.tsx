@@ -53,6 +53,11 @@ export const UniversalScanner = ({
   const [manualInput, setManualInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   
+  // Barcode reader keyboard input buffer
+  const [keyboardBuffer, setKeyboardBuffer] = useState('');
+  const keyboardTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const hiddenInputRef = useRef<HTMLInputElement>(null);
+  
   // Camera settings
   const [resolution, setResolution] = useState<'auto' | 'hd' | 'fhd'>('auto');
   const [torchMode, setTorchMode] = useState(false);
@@ -408,6 +413,53 @@ export const UniversalScanner = ({
     setManualInput('');
   };
 
+  // Handle keyboard input from external barcode readers
+  const handleKeyboardInput = useCallback((e: KeyboardEvent) => {
+    // Only process if scanner is open and not currently processing
+    if (!open || isProcessing) return;
+    
+    // Ignore if user is typing in a text input
+    const activeElement = document.activeElement;
+    if (activeElement && (
+      activeElement.tagName === 'INPUT' || 
+      activeElement.tagName === 'TEXTAREA' ||
+      (activeElement as any).contentEditable === 'true'
+    )) {
+      return;
+    }
+
+    // Handle barcode reader input (typically sends Enter after data)
+    if (e.key === 'Enter') {
+      if (keyboardBuffer.trim().length > 3) { // Minimum length for valid barcode
+        toast({
+          title: "Barcode Reader Input Detected",
+          description: `Processing: ${keyboardBuffer.substring(0, 30)}...`,
+        });
+        handleScanResult(keyboardBuffer.trim());
+        setKeyboardBuffer('');
+        return;
+      }
+    }
+    
+    // Build keyboard buffer for barcode readers
+    if (e.key.length === 1 || e.key === 'Enter') {
+      e.preventDefault();
+      
+      if (e.key === 'Enter') return; // Already handled above
+      
+      setKeyboardBuffer(prev => prev + e.key);
+      
+      // Clear buffer after timeout (barcode readers are fast)
+      if (keyboardTimerRef.current) {
+        clearTimeout(keyboardTimerRef.current);
+      }
+      
+      keyboardTimerRef.current = setTimeout(() => {
+        setKeyboardBuffer('');
+      }, 100); // 100ms timeout - barcode readers scan much faster
+    }
+  }, [open, isProcessing, keyboardBuffer, handleScanResult, toast]);
+
   const switchCamera = async (deviceId: string) => {
     setSelectedDevice(deviceId);
     stopScanner();
@@ -424,14 +476,25 @@ export const UniversalScanner = ({
   useEffect(() => {
     if (open) {
       initializeScanner();
+      // Add global keyboard listener for barcode readers
+      document.addEventListener('keydown', handleKeyboardInput);
+      // Focus hidden input to ensure we can capture keyboard events
+      setTimeout(() => {
+        hiddenInputRef.current?.focus();
+      }, 100);
     } else {
       stopScanner();
+      document.removeEventListener('keydown', handleKeyboardInput);
     }
 
     return () => {
       stopScanner();
+      document.removeEventListener('keydown', handleKeyboardInput);
+      if (keyboardTimerRef.current) {
+        clearTimeout(keyboardTimerRef.current);
+      }
     };
-  }, [open, initializeScanner]);
+  }, [open, initializeScanner, handleKeyboardInput]);
 
   useEffect(() => {
     if (scanMode === 'camera' && selectedDevice && open) {
@@ -451,13 +514,40 @@ export const UniversalScanner = ({
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        {/* Hidden input for barcode reader focus */}
+        <input
+          ref={hiddenInputRef}
+          type="text"
+          value=""
+          onChange={() => {}} // Controlled by keyboard listener
+          style={{ 
+            position: 'absolute', 
+            left: '-9999px', 
+            opacity: 0, 
+            pointerEvents: 'none' 
+          }}
+          tabIndex={-1}
+          aria-hidden="true"
+        />
+        
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Smartphone className="w-5 h-5" />
             {title}
+            {keyboardBuffer && (
+              <Badge variant="secondary" className="ml-2">
+                Reading: {keyboardBuffer.length} chars
+              </Badge>
+            )}
           </DialogTitle>
           <DialogDescription>
             {description}
+            {scanMode === 'camera' && (
+              <div className="mt-2 p-2 bg-muted/50 rounded text-xs">
+                <ScanLine className="w-3 h-3 inline mr-1" />
+                Barcode readers will work automatically - just scan!
+              </div>
+            )}
           </DialogDescription>
         </DialogHeader>
         
@@ -699,7 +789,8 @@ export const UniversalScanner = ({
         {/* Footer */}
         <div className="flex justify-between items-center pt-4 border-t">
           <div className="text-xs text-muted-foreground">
-            Supports student IDs, book QR codes, ISBNs, and all major barcode formats
+            Supports student IDs, book QR codes, ISBNs, and all major barcode formats.
+            {scanMode === 'camera' && ' External barcode readers supported.'}
           </div>
           <Button variant="outline" onClick={handleClose}>
             Cancel

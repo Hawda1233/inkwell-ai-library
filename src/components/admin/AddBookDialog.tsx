@@ -33,7 +33,9 @@ interface AddBookDialogProps {
 
 interface BookData {
   title: string;
-  author: string;
+  author1: string;
+  author2: string;
+  author3: string;
   isbn: string;
   publisher: string;
   category: string;
@@ -71,7 +73,9 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
   const descriptionInputRef = useRef<HTMLTextAreaElement>(null);
   const [bookData, setBookData] = useState<BookData>({
     title: "",
-    author: "",
+    author1: "",
+    author2: "",
+    author3: "",
     isbn: "",
     publisher: "",
     category: "",
@@ -497,31 +501,33 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="author">Author *</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      ref={authorInputRef}
-                      id="author"
-                      placeholder={
-                        inputLanguage === 'mr' ? "लेखकाचे नाव प्रविष्ट करा" :
-                        inputLanguage === 'hi' ? "लेखक का नाम दर्ज करें" :
-                        "Enter author name(s)"
-                      }
-                      value={bookData.author}
-                      onChange={(e) => updateBookData('author', e.target.value)}
-                      lang={inputLanguage}
-                    />
-                    {inputLanguage !== 'en' && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openKeyboard('author')}
-                      >
-                        <Languages className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
+                  <Label htmlFor="author1">Author 1 *</Label>
+                  <Input
+                    id="author1"
+                    placeholder="Primary author name"
+                    value={bookData.author1}
+                    onChange={(e) => updateBookData('author1', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="author2">Author 2</Label>
+                  <Input
+                    id="author2"
+                    placeholder="Second author (optional)"
+                    value={bookData.author2}
+                    onChange={(e) => updateBookData('author2', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="author3">Author 3</Label>
+                  <Input
+                    id="author3"
+                    placeholder="Third author (optional)"
+                    value={bookData.author3}
+                    onChange={(e) => updateBookData('author3', e.target.value)}
+                  />
                 </div>
 
                 <div className="space-y-2">

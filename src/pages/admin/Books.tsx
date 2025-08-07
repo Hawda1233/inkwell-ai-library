@@ -46,6 +46,16 @@ interface Book {
   row_shelf_number: string | null;
   cover_image_url: string | null;
   created_at: string;
+  acquisition_date: string | null;
+  accession_number: string | null;
+  edition: string | null;
+  pages: number | null;
+  volume: string | null;
+  source: string | null;
+  bill_number: string | null;
+  bill_date: string | null;
+  cost: number | null;
+  withdrawal_remarks: string | null;
 }
 
 export const Books = () => {

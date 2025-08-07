@@ -44,6 +44,16 @@ interface BookData {
   rack_number: string;
   row_shelf_number: string;
   cover_image_url: string;
+  acquisition_date: string;
+  accession_number: string;
+  edition: string;
+  pages: string;
+  volume: string;
+  source: string;
+  bill_number: string;
+  bill_date: string;
+  cost: string;
+  withdrawal_remarks: string;
 }
 
 export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialogProps) => {
@@ -71,7 +81,17 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
     location_shelf: "",
     rack_number: "",
     row_shelf_number: "",
-    cover_image_url: ""
+    cover_image_url: "",
+    acquisition_date: "",
+    accession_number: "",
+    edition: "",
+    pages: "",
+    volume: "",
+    source: "",
+    bill_number: "",
+    bill_date: "",
+    cost: "",
+    withdrawal_remarks: ""
   });
 
   const categories = [
@@ -298,7 +318,17 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
           location_shelf: bookData.location_shelf?.trim() || null,
           rack_number: bookData.rack_number?.trim() || null,
           row_shelf_number: bookData.row_shelf_number?.trim() || null,
-          cover_image_url: bookData.cover_image_url || null
+          cover_image_url: bookData.cover_image_url || null,
+          acquisition_date: bookData.acquisition_date || null,
+          accession_number: bookData.accession_number?.trim() || null,
+          edition: bookData.edition?.trim() || null,
+          pages: bookData.pages ? parseInt(bookData.pages) : null,
+          volume: bookData.volume?.trim() || null,
+          source: bookData.source || null,
+          bill_number: bookData.bill_number?.trim() || null,
+          bill_date: bookData.bill_date || null,
+          cost: bookData.cost ? parseFloat(bookData.cost) : null,
+          withdrawal_remarks: bookData.withdrawal_remarks?.trim() || null
         }])
         .select()
         .single();
@@ -341,7 +371,17 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
         location_shelf: "",
         rack_number: "",
         row_shelf_number: "",
-        cover_image_url: ""
+        cover_image_url: "",
+        acquisition_date: "",
+        accession_number: "",
+        edition: "",
+        pages: "",
+        volume: "",
+        source: "",
+        bill_number: "",
+        bill_date: "",
+        cost: "",
+        withdrawal_remarks: ""
       });
       setIsbnSearchComplete(false);
       setInputLanguage('en');
@@ -633,6 +673,122 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
               </div>
             </div>
 
+            {/* New Book Details Section */}
+            <div className="space-y-4 p-4 border rounded-lg bg-muted/5">
+              <h3 className="text-lg font-semibold">Acquisition & Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="acquisition_date">Date (तारीख)</Label>
+                  <Input
+                    id="acquisition_date"
+                    type="date"
+                    value={bookData.acquisition_date}
+                    onChange={(e) => updateBookData('acquisition_date', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="accession_number">Accession Number (क्रमांक संख्या)</Label>
+                  <Input
+                    id="accession_number"
+                    placeholder="Unique ID for book entry"
+                    value={bookData.accession_number}
+                    onChange={(e) => updateBookData('accession_number', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edition">Edition (संस्करण)</Label>
+                  <Input
+                    id="edition"
+                    placeholder="e.g., 1st, 2nd, Revised"
+                    value={bookData.edition}
+                    onChange={(e) => updateBookData('edition', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="pages">Pages (पृष्ठ)</Label>
+                  <Input
+                    id="pages"
+                    type="number"
+                    placeholder="Total pages"
+                    value={bookData.pages}
+                    onChange={(e) => updateBookData('pages', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="volume">Vol. (खण्ड)</Label>
+                  <Input
+                    id="volume"
+                    placeholder="Volume number"
+                    value={bookData.volume}
+                    onChange={(e) => updateBookData('volume', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="source">Source (स्रोत)</Label>
+                  <Select value={bookData.source} onValueChange={(value) => updateBookData('source', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select source" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="purchase">Purchase</SelectItem>
+                      <SelectItem value="donation">Donation</SelectItem>
+                      <SelectItem value="gift">Gift</SelectItem>
+                      <SelectItem value="exchange">Exchange</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="bill_number">Bill No. (बिल क्रमांक)</Label>
+                  <Input
+                    id="bill_number"
+                    placeholder="Purchase bill number"
+                    value={bookData.bill_number}
+                    onChange={(e) => updateBookData('bill_number', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="bill_date">Bill Date (बिल दिनांक)</Label>
+                  <Input
+                    id="bill_date"
+                    type="date"
+                    value={bookData.bill_date}
+                    onChange={(e) => updateBookData('bill_date', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="cost">Cost (मूल्य)</Label>
+                  <Input
+                    id="cost"
+                    type="number"
+                    step="0.01"
+                    placeholder="Book price"
+                    value={bookData.cost}
+                    onChange={(e) => updateBookData('cost', e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="withdrawal_remarks">Withdrawal/Remarks</Label>
+                <Textarea
+                  id="withdrawal_remarks"
+                  placeholder="Notes if book is withdrawn or removed"
+                  value={bookData.withdrawal_remarks}
+                  onChange={(e) => updateBookData('withdrawal_remarks', e.target.value)}
+                  rows={2}
+                />
+              </div>
+            </div>
+
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="description">Description</Label>
@@ -903,6 +1059,122 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
                         placeholder="e.g., Near window, Top shelf"
                         value={bookData.location_shelf}
                         onChange={(e) => updateBookData('location_shelf', e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  {/* New Book Details Section */}
+                  <div className="space-y-4 p-4 border rounded-lg bg-muted/5">
+                    <h3 className="text-lg font-semibold">Acquisition & Details</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="isbn-acquisition-date">Date (तारीख)</Label>
+                        <Input
+                          id="isbn-acquisition-date"
+                          type="date"
+                          value={bookData.acquisition_date}
+                          onChange={(e) => updateBookData('acquisition_date', e.target.value)}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="isbn-accession-number">Accession Number (क्रमांक संख्या)</Label>
+                        <Input
+                          id="isbn-accession-number"
+                          placeholder="Unique ID for book entry"
+                          value={bookData.accession_number}
+                          onChange={(e) => updateBookData('accession_number', e.target.value)}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="isbn-edition">Edition (संस्करण)</Label>
+                        <Input
+                          id="isbn-edition"
+                          placeholder="e.g., 1st, 2nd, Revised"
+                          value={bookData.edition}
+                          onChange={(e) => updateBookData('edition', e.target.value)}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="isbn-pages">Pages (पृष्ठ)</Label>
+                        <Input
+                          id="isbn-pages"
+                          type="number"
+                          placeholder="Total pages"
+                          value={bookData.pages}
+                          onChange={(e) => updateBookData('pages', e.target.value)}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="isbn-volume">Vol. (खण्ड)</Label>
+                        <Input
+                          id="isbn-volume"
+                          placeholder="Volume number"
+                          value={bookData.volume}
+                          onChange={(e) => updateBookData('volume', e.target.value)}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="isbn-source">Source (स्रोत)</Label>
+                        <Select value={bookData.source} onValueChange={(value) => updateBookData('source', value)}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select source" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="purchase">Purchase</SelectItem>
+                            <SelectItem value="donation">Donation</SelectItem>
+                            <SelectItem value="gift">Gift</SelectItem>
+                            <SelectItem value="exchange">Exchange</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="isbn-bill-number">Bill No. (बिल क्रमांक)</Label>
+                        <Input
+                          id="isbn-bill-number"
+                          placeholder="Purchase bill number"
+                          value={bookData.bill_number}
+                          onChange={(e) => updateBookData('bill_number', e.target.value)}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="isbn-bill-date">Bill Date (बिल दिनांक)</Label>
+                        <Input
+                          id="isbn-bill-date"
+                          type="date"
+                          value={bookData.bill_date}
+                          onChange={(e) => updateBookData('bill_date', e.target.value)}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="isbn-cost">Cost (मूल्य)</Label>
+                        <Input
+                          id="isbn-cost"
+                          type="number"
+                          step="0.01"
+                          placeholder="Book price"
+                          value={bookData.cost}
+                          onChange={(e) => updateBookData('cost', e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="isbn-withdrawal-remarks">Withdrawal/Remarks</Label>
+                      <Textarea
+                        id="isbn-withdrawal-remarks"
+                        placeholder="Notes if book is withdrawn or removed"
+                        value={bookData.withdrawal_remarks}
+                        onChange={(e) => updateBookData('withdrawal_remarks', e.target.value)}
+                        rows={2}
                       />
                     </div>
                   </div>

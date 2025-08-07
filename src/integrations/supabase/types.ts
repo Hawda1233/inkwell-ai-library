@@ -99,58 +99,88 @@ export type Database = {
       }
       books: {
         Row: {
+          accession_number: string | null
+          acquisition_date: string | null
           author: string
           available_copies: number
+          bill_date: string | null
+          bill_number: string | null
           category: string | null
+          cost: number | null
           cover_image_url: string | null
           created_at: string
           description: string | null
+          edition: string | null
           id: string
           isbn: string | null
           location_shelf: string | null
+          pages: number | null
           publication_year: number | null
           publisher: string | null
           rack_number: string | null
           row_shelf_number: string | null
+          source: string | null
           title: string
           total_copies: number
           updated_at: string
+          volume: string | null
+          withdrawal_remarks: string | null
         }
         Insert: {
+          accession_number?: string | null
+          acquisition_date?: string | null
           author: string
           available_copies?: number
+          bill_date?: string | null
+          bill_number?: string | null
           category?: string | null
+          cost?: number | null
           cover_image_url?: string | null
           created_at?: string
           description?: string | null
+          edition?: string | null
           id?: string
           isbn?: string | null
           location_shelf?: string | null
+          pages?: number | null
           publication_year?: number | null
           publisher?: string | null
           rack_number?: string | null
           row_shelf_number?: string | null
+          source?: string | null
           title: string
           total_copies?: number
           updated_at?: string
+          volume?: string | null
+          withdrawal_remarks?: string | null
         }
         Update: {
+          accession_number?: string | null
+          acquisition_date?: string | null
           author?: string
           available_copies?: number
+          bill_date?: string | null
+          bill_number?: string | null
           category?: string | null
+          cost?: number | null
           cover_image_url?: string | null
           created_at?: string
           description?: string | null
+          edition?: string | null
           id?: string
           isbn?: string | null
           location_shelf?: string | null
+          pages?: number | null
           publication_year?: number | null
           publisher?: string | null
           rack_number?: string | null
           row_shelf_number?: string | null
+          source?: string | null
           title?: string
           total_copies?: number
           updated_at?: string
+          volume?: string | null
+          withdrawal_remarks?: string | null
         }
         Relationships: []
       }

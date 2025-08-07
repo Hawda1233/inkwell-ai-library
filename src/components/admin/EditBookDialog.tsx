@@ -31,6 +31,16 @@ interface Book {
   rack_number: string | null;
   row_shelf_number: string | null;
   cover_image_url: string | null;
+  acquisition_date: string | null;
+  accession_number: string | null;
+  edition: string | null;
+  pages: number | null;
+  volume: string | null;
+  source: string | null;
+  bill_number: string | null;
+  bill_date: string | null;
+  cost: number | null;
+  withdrawal_remarks: string | null;
 }
 
 interface EditBookDialogProps {
@@ -56,7 +66,17 @@ export const EditBookDialog = ({ book, open, onOpenChange, onBookUpdated }: Edit
     available_copies: "",
     location_shelf: "",
     rack_number: "",
-    row_shelf_number: ""
+    row_shelf_number: "",
+    acquisition_date: "",
+    accession_number: "",
+    edition: "",
+    pages: "",
+    volume: "",
+    source: "",
+    bill_number: "",
+    bill_date: "",
+    cost: "",
+    withdrawal_remarks: ""
   });
 
   const categories = [
@@ -80,7 +100,17 @@ export const EditBookDialog = ({ book, open, onOpenChange, onBookUpdated }: Edit
         available_copies: book.available_copies.toString(),
         location_shelf: book.location_shelf || "",
         rack_number: book.rack_number || "",
-        row_shelf_number: book.row_shelf_number || ""
+        row_shelf_number: book.row_shelf_number || "",
+        acquisition_date: book.acquisition_date || "",
+        accession_number: book.accession_number || "",
+        edition: book.edition || "",
+        pages: book.pages?.toString() || "",
+        volume: book.volume || "",
+        source: book.source || "",
+        bill_number: book.bill_number || "",
+        bill_date: book.bill_date || "",
+        cost: book.cost?.toString() || "",
+        withdrawal_remarks: book.withdrawal_remarks || ""
       });
     }
   }, [book, open]);
@@ -168,7 +198,17 @@ export const EditBookDialog = ({ book, open, onOpenChange, onBookUpdated }: Edit
           available_copies: parseInt(formData.available_copies),
           location_shelf: formData.location_shelf.trim() || null,
           rack_number: formData.rack_number.trim() || null,
-          row_shelf_number: formData.row_shelf_number.trim() || null
+          row_shelf_number: formData.row_shelf_number.trim() || null,
+          acquisition_date: formData.acquisition_date || null,
+          accession_number: formData.accession_number.trim() || null,
+          edition: formData.edition.trim() || null,
+          pages: formData.pages ? parseInt(formData.pages) : null,
+          volume: formData.volume.trim() || null,
+          source: formData.source || null,
+          bill_number: formData.bill_number.trim() || null,
+          bill_date: formData.bill_date || null,
+          cost: formData.cost ? parseFloat(formData.cost) : null,
+          withdrawal_remarks: formData.withdrawal_remarks.trim() || null
         })
         .eq('id', book.id);
 
@@ -397,6 +437,122 @@ export const EditBookDialog = ({ book, open, onOpenChange, onBookUpdated }: Edit
                 value={formData.location_shelf}
                 onChange={(e) => handleInputChange('location_shelf', e.target.value)}
                 placeholder="e.g., Near window, Top shelf"
+              />
+            </div>
+          </div>
+
+          {/* New Acquisition & Details Section */}
+          <div className="space-y-4 p-4 border rounded-lg bg-muted/5">
+            <h3 className="text-lg font-semibold">Acquisition & Details</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-acquisition-date">Date (तारीख)</Label>
+                <Input
+                  id="edit-acquisition-date"
+                  type="date"
+                  value={formData.acquisition_date}
+                  onChange={(e) => handleInputChange('acquisition_date', e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-accession-number">Accession Number (क्रमांक संख्या)</Label>
+                <Input
+                  id="edit-accession-number"
+                  placeholder="Unique ID for book entry"
+                  value={formData.accession_number}
+                  onChange={(e) => handleInputChange('accession_number', e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-edition">Edition (संस्करण)</Label>
+                <Input
+                  id="edit-edition"
+                  placeholder="e.g., 1st, 2nd, Revised"
+                  value={formData.edition}
+                  onChange={(e) => handleInputChange('edition', e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-pages">Pages (पृष्ठ)</Label>
+                <Input
+                  id="edit-pages"
+                  type="number"
+                  placeholder="Total pages"
+                  value={formData.pages}
+                  onChange={(e) => handleInputChange('pages', e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-volume">Vol. (खण्ड)</Label>
+                <Input
+                  id="edit-volume"
+                  placeholder="Volume number"
+                  value={formData.volume}
+                  onChange={(e) => handleInputChange('volume', e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-source">Source (स्रोत)</Label>
+                <Select value={formData.source} onValueChange={(value) => handleInputChange('source', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select source" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="purchase">Purchase</SelectItem>
+                    <SelectItem value="donation">Donation</SelectItem>
+                    <SelectItem value="gift">Gift</SelectItem>
+                    <SelectItem value="exchange">Exchange</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-bill-number">Bill No. (बिल क्रमांक)</Label>
+                <Input
+                  id="edit-bill-number"
+                  placeholder="Purchase bill number"
+                  value={formData.bill_number}
+                  onChange={(e) => handleInputChange('bill_number', e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-bill-date">Bill Date (बिल दिनांक)</Label>
+                <Input
+                  id="edit-bill-date"
+                  type="date"
+                  value={formData.bill_date}
+                  onChange={(e) => handleInputChange('bill_date', e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-cost">Cost (मूल्य)</Label>
+                <Input
+                  id="edit-cost"
+                  type="number"
+                  step="0.01"
+                  placeholder="Book price"
+                  value={formData.cost}
+                  onChange={(e) => handleInputChange('cost', e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-withdrawal-remarks">Withdrawal/Remarks</Label>
+              <Textarea
+                id="edit-withdrawal-remarks"
+                placeholder="Notes if book is withdrawn or removed"
+                value={formData.withdrawal_remarks}
+                onChange={(e) => handleInputChange('withdrawal_remarks', e.target.value)}
+                rows={2}
               />
             </div>
           </div>

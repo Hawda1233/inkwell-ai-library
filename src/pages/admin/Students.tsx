@@ -4,12 +4,14 @@ import { AddStudentDialog } from "@/components/admin/AddStudentDialog";
 import { ViewStudentDialog } from "@/components/admin/ViewStudentDialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Users, Search, Plus, Filter, Download, Mail, QrCode, RefreshCw } from "lucide-react";
+import { BulkStudentImport } from "@/components/admin/BulkStudentImport";
+import { Users, Search, Plus, Filter, Download, Mail, QrCode, RefreshCw, Upload } from "lucide-react";
 
 interface Student {
   id: string;
@@ -29,6 +31,7 @@ export const Students = () => {
   const [addStudentOpen, setAddStudentOpen] = useState(false);
   const [viewStudentOpen, setViewStudentOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   const fetchStudents = async () => {
     try {
@@ -249,6 +252,13 @@ export const Students = () => {
                 <Download className="w-4 h-4" />
                 Export
               </Button>
+              <Button 
+                className="flex items-center gap-2" 
+                onClick={() => setBulkOpen(true)}
+              >
+                <Upload className="w-4 h-4" />
+                Bulk Import
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -372,6 +382,15 @@ export const Students = () => {
         onOpenChange={setViewStudentOpen}
         onStudentUpdated={fetchStudents}
       />
+
+      <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Bulk Import Students</DialogTitle>
+          </DialogHeader>
+          <BulkStudentImport onComplete={() => { setBulkOpen(false); fetchStudents(); }} />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

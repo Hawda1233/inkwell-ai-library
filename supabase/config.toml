@@ -1,1 +1,4 @@
 project_id = "exhmtishhyaaqerjqugi"
+
+[functions.bulk-create-students]
+verify_jwt = true

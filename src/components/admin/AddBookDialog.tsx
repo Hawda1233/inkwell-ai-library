@@ -158,7 +158,9 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
         setBookData(prev => ({
           ...prev,
           title: book.title || prev.title,
-          author: book.authors ? book.authors.join(", ") : prev.author,
+          author1: book.authors ? book.authors[0] : prev.author1,
+          author2: book.authors && book.authors[1] ? book.authors[1] : prev.author2,
+          author3: book.authors && book.authors[2] ? book.authors[2] : prev.author3,
           publisher: book.publisher || prev.publisher,
           description: book.description || prev.description,
           publication_year: book.publishedDate ? book.publishedDate.split("-")[0] : prev.publication_year,
@@ -262,10 +264,10 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
       return false;
     }
     
-    if (!bookData.author.trim()) {
+    if (!bookData.author1.trim()) {
       toast({
         title: "Author Required", 
-        description: "Please enter the author name",
+        description: "Please enter at least the primary author name",
         variant: "destructive"
       });
       return false;
@@ -311,7 +313,7 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
         .from('books')
         .insert([{
           title: bookData.title.trim(),
-          author: bookData.author.trim(),
+          author: [bookData.author1, bookData.author2, bookData.author3].filter(Boolean).join(", "),
           isbn: bookData.isbn?.trim() || null,
           publisher: bookData.publisher?.trim() || null,
           category: bookData.category || null,
@@ -365,7 +367,9 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
       // Reset form and states
       setBookData({
         title: "",
-        author: "",
+        author1: "",
+        author2: "",
+        author3: "",
         isbn: "",
         publisher: "",
         category: "",
@@ -913,7 +917,9 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
                         setBookData(prev => ({
                           ...prev,
                           title: "",
-                          author: "",
+                          author1: "",
+                          author2: "",
+                          author3: "",
                           publisher: "",
                           description: "",
                           publication_year: "",
@@ -966,8 +972,8 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
                             inputLanguage === 'hi' ? "लेखक का नाम दर्ज करें" :
                             "Enter author name(s)"
                           }
-                          value={bookData.author}
-                          onChange={(e) => updateBookData('author', e.target.value)}
+                          value={bookData.author1}
+                          onChange={(e) => updateBookData('author1', e.target.value)}
                           lang={inputLanguage}
                         />
                         {inputLanguage !== 'en' && (
@@ -975,7 +981,7 @@ export const AddBookDialog = ({ open, onOpenChange, onBookAdded }: AddBookDialog
                             type="button"
                             variant="outline"
                             size="sm"
-                            onClick={() => openKeyboard('author')}
+                            onClick={() => openKeyboard('author1')}
                           >
                             <Languages className="w-4 h-4" />
                           </Button>

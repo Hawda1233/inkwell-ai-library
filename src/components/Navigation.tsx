@@ -58,7 +58,7 @@ export const Navigation = ({ userRole }: NavigationProps) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-3 smooth-transition hover:scale-105">
+          <Link to="/" className="flex items-center space-x-3 smooth-transition hover:scale-105 flex-shrink-0">
             <div className="w-10 h-10 academic-gradient rounded-lg flex items-center justify-center">
               <Library className="w-6 h-6 text-white" />
             </div>
@@ -69,7 +69,7 @@ export const Navigation = ({ userRole }: NavigationProps) => {
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-1">
+          <div className="hidden md:flex items-center space-x-1 flex-1 min-w-0 overflow-x-auto whitespace-nowrap no-scrollbar">
             {navItems.map((item) => (
               <Link
                 key={item.href}
@@ -85,7 +85,7 @@ export const Navigation = ({ userRole }: NavigationProps) => {
           </div>
 
           {/* Right Section */}
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-3 flex-shrink-0">
             {/* Theme Toggle */}
             <Button
               variant="ghost"

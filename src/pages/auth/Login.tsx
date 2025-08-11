@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -253,15 +253,6 @@ export const Login = () => {
           </CardContent>
         </Card>
 
-        {/* Footer */}
-        <div className="text-center mt-6">
-          <Link
-            to="/home"
-            className="text-sm text-muted-foreground hover:text-foreground smooth-transition"
-          >
-            ← Back to Home
-          </Link>
-        </div>
       </div>
     </div>
   );

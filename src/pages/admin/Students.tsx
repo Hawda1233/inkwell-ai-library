@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Navigation } from "@/components/Navigation";
 import { AddStudentDialog } from "@/components/admin/AddStudentDialog";
-import { ViewStudentDialog } from "@/components/admin/ViewStudentDialog";
+// import { ViewStudentDialog } from "@/components/admin/ViewStudentDialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -11,16 +11,19 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { BulkStudentImport } from "@/components/admin/BulkStudentImport";
-import { Users, Search, Plus, Filter, Download, Mail, QrCode, RefreshCw, Upload } from "lucide-react";
+import { Users, Search, Plus, Filter, Download, Mail, QrCode, RefreshCw, Upload, Trash } from "lucide-react";
 
 interface Student {
   id: string;
-  email: string;
   full_name: string;
+  email?: string | null;
+  course_level: 'UG' | 'PG';
+  program: 'BCom' | 'MCom' | 'BBA' | 'BCA' | 'BA' | 'BEd' | 'DEd' | 'BSc' | 'MSc';
+  year: number;
+  division: string;
+  roll_number: string;
+  student_number?: string | null;
   created_at: string;
-  booksIssued?: number;
-  student_number?: string;
-  digital_id_active?: boolean;
 }
 
 export const Students = () => {
@@ -28,80 +31,18 @@ export const Students = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
-  const [addStudentOpen, setAddStudentOpen] = useState(false);
-  const [viewStudentOpen, setViewStudentOpen] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+const [addStudentOpen, setAddStudentOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
 
   const fetchStudents = async () => {
     try {
       setLoading(true);
-
-      // Get all users with student role and their profile data
-      const { data: studentRoles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .eq('role', 'student');
-
-      if (rolesError) throw rolesError;
-
-      if (!studentRoles?.length) {
-        setStudents([]);
-        return;
-      }
-
-      const studentIds = studentRoles.map(role => role.user_id);
-
-      // Get profile information for students
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
+      const { data, error } = await (supabase as any)
+        .from('students')
         .select('*')
-        .in('id', studentIds);
-
-      if (profilesError) throw profilesError;
-
-      // Get digital IDs for students
-      const { data: digitalIds, error: digitalIdsError } = await supabase
-        .from('student_digital_ids')
-        .select('student_id, student_number, is_active')
-        .in('student_id', studentIds);
-
-      if (digitalIdsError) throw digitalIdsError;
-
-      // Get book transactions for each student to count issued books
-      const { data: transactions, error: transactionsError } = await supabase
-        .from('book_transactions')
-        .select('student_id')
-        .eq('status', 'active')
-        .eq('transaction_type', 'borrow');
-
-      if (transactionsError) throw transactionsError;
-
-      // Count books issued per student
-      const booksIssuedCount = transactions?.reduce((acc: any, transaction) => {
-        acc[transaction.student_id] = (acc[transaction.student_id] || 0) + 1;
-        return acc;
-      }, {}) || {};
-
-      // Create digital ID lookup
-      const digitalIdLookup = digitalIds?.reduce((acc: any, digitalId) => {
-        acc[digitalId.student_id] = digitalId;
-        return acc;
-      }, {}) || {};
-
-      // Combine data
-      const studentsData = profiles?.map(profile => {
-        const digitalId = digitalIdLookup[profile.id];
-        return {
-          ...profile,
-          booksIssued: booksIssuedCount[profile.id] || 0,
-          student_number: digitalId?.student_number || null,
-          digital_id_active: digitalId?.is_active || false
-        };
-      }) || [];
-
-      setStudents(studentsData);
-
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setStudents(data || []);
     } catch (error: any) {
       console.error('Error fetching students:', error);
       toast({
@@ -117,69 +58,54 @@ export const Students = () => {
   useEffect(() => {
     fetchStudents();
 
-    // Set up real-time subscriptions
-    const profilesChannel = supabase
-      .channel('students-profiles')
+    const channel = supabase
+      .channel('students-changes')
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'profiles'
-        },
-        () => {
-          fetchStudents();
-        }
-      )
-      .subscribe();
-
-    const rolesChannel = supabase
-      .channel('students-roles')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'user_roles'
-        },
-        () => {
-          fetchStudents();
-        }
+        { event: '*', schema: 'public', table: 'students' },
+        () => fetchStudents()
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(profilesChannel);
-      supabase.removeChannel(rolesChannel);
+      supabase.removeChannel(channel);
     };
   }, []);
 
-  const filteredStudents = students.filter((student) => {
+  const filteredStudents = students.filter((s) => {
     if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
+    const q = searchQuery.toLowerCase();
     return (
-      student.full_name?.toLowerCase().includes(query) ||
-      student.email?.toLowerCase().includes(query) ||
-      student.id.toLowerCase().includes(query) ||
-      student.student_number?.toLowerCase().includes(query)
+      s.full_name?.toLowerCase().includes(q) ||
+      (s.email || '').toLowerCase().includes(q) ||
+      s.program.toLowerCase().includes(q) ||
+      s.course_level.toLowerCase().includes(q) ||
+      String(s.year).includes(q) ||
+      s.division.toLowerCase().includes(q) ||
+      s.roll_number.toLowerCase().includes(q) ||
+      (s.student_number || '').toLowerCase().includes(q)
     );
   });
 
   const exportStudents = () => {
     const csvContent = [
-      ["Name", "Email", "ID", "Books Issued", "Joined Date"],
-      ...filteredStudents.map(student => [
-        student.full_name || "Unknown",
-        student.email,
-        student.id,
-        student.booksIssued || 0,
-        new Date(student.created_at).toLocaleDateString()
+      ['Full Name','Email','Level','Program','Year','Division','Roll Number','Student Number','Created At'],
+      ...filteredStudents.map(s => [
+        s.full_name,
+        s.email || '',
+        s.course_level,
+        s.program,
+        String(s.year),
+        s.division,
+        s.roll_number,
+        s.student_number || '',
+        new Date(s.created_at).toLocaleDateString()
       ])
-    ].map(row => row.join(",")).join("\n");
+    ].map(row => row.join(',')).join('\n');
 
-    const blob = new Blob([csvContent], { type: "text/csv" });
+    const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
+    const a = document.createElement('a');
     a.href = url;
     a.download = `students-export-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
@@ -278,7 +204,7 @@ export const Students = () => {
               <h3 className="text-lg font-semibold mb-2">No Students Found</h3>
               <p className="text-muted-foreground mb-4">
                 {students.length === 0 
-                  ? "No students registered yet. Students will appear here after they sign up."
+                  ? "No students added yet. Add or import students to see them here."
                   : "No students match your current search criteria."
                 }
               </p>
@@ -326,40 +252,28 @@ export const Students = () => {
                       </div>
                     )}
                     <div className="text-sm space-y-1">
-                      <p><span className="font-medium">Joined:</span> {new Date(student.created_at).toLocaleDateString()}</p>
-                      <p><span className="font-medium">Books Issued:</span> {student.booksIssued || 0}</p>
-                      {student.student_number && (
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">Digital ID:</span>
-                          <Badge variant={student.digital_id_active ? "default" : "destructive"} className="text-xs">
-                            {student.digital_id_active ? "Active" : "Inactive"}
-                          </Badge>
-                        </div>
-                      )}
+                      <p><span className="font-medium">Level/Program:</span> {student.course_level} / {student.program}</p>
+                      <p><span className="font-medium">Year:</span> {student.year} &nbsp; <span className="font-medium ml-2">Division:</span> {student.division}</p>
+                      <p><span className="font-medium">Roll No:</span> {student.roll_number}</p>
                     </div>
                   </div>
                   <div className="flex gap-2 mt-4">
                     <Button 
-                      variant="outline" 
+                      variant="destructive" 
                       size="sm" 
                       className="flex-1"
-                      onClick={() => {
-                        setSelectedStudent(student);
-                        setViewStudentOpen(true);
+                      onClick={async () => {
+                        if (!confirm(`Delete ${student.full_name}?`)) return;
+                        const { error } = await (supabase as any).from('students').delete().eq('id', student.id);
+                        if (error) {
+                          toast({ title: 'Delete failed', description: error.message, variant: 'destructive' });
+                        } else {
+                          toast({ title: 'Student deleted' });
+                          fetchStudents();
+                        }
                       }}
                     >
-                      Edit
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="flex-1"
-                      onClick={() => {
-                        setSelectedStudent(student);
-                        setViewStudentOpen(true);
-                      }}
-                    >
-                      View Profile
+                      <Trash className="w-4 h-4 mr-2" /> Delete
                     </Button>
                   </div>
                 </CardContent>
@@ -376,12 +290,6 @@ export const Students = () => {
         onStudentAdded={fetchStudents}
       />
 
-      <ViewStudentDialog
-        student={selectedStudent}
-        open={viewStudentOpen}
-        onOpenChange={setViewStudentOpen}
-        onStudentUpdated={fetchStudents}
-      />
 
       <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
         <DialogContent className="max-w-3xl">

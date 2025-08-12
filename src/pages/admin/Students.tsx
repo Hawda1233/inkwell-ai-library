@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { BulkStudentImport } from "@/components/admin/BulkStudentImport";
+import { EditStudentRecordDialog } from "@/components/admin/EditStudentRecordDialog";
 import { Users, Search, Plus, Filter, Download, Mail, QrCode, RefreshCw, Upload, Trash } from "lucide-react";
 
 interface Student {
@@ -33,6 +34,8 @@ export const Students = () => {
   const [loading, setLoading] = useState(true);
 const [addStudentOpen, setAddStudentOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
   const fetchStudents = async () => {
     try {
@@ -259,6 +262,14 @@ const [addStudentOpen, setAddStudentOpen] = useState(false);
                   </div>
                   <div className="flex gap-2 mt-4">
                     <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1"
+                      onClick={() => { setSelectedStudent(student); setEditOpen(true); }}
+                    >
+                      Edit
+                    </Button>
+                    <Button 
                       variant="destructive" 
                       size="sm" 
                       className="flex-1"
@@ -290,6 +301,12 @@ const [addStudentOpen, setAddStudentOpen] = useState(false);
         onStudentAdded={fetchStudents}
       />
 
+      <EditStudentRecordDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        student={selectedStudent}
+        onSaved={fetchStudents}
+      />
 
       <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
         <DialogContent className="max-w-3xl">

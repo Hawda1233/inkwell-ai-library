@@ -7,7 +7,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import { Login } from "./pages/auth/Login";
 import { AdminDashboard } from "./pages/admin/Dashboard";
-import { StudentDashboard } from "./pages/student/Dashboard";
+// import { StudentDashboard } from "./pages/student/Dashboard";
 import { Books } from "./pages/admin/Books";
 import { Students } from "./pages/admin/Students";
 import { LibrarySessions } from "./pages/admin/LibrarySessions";
@@ -35,7 +35,7 @@ const App = () => (
           <Route path="/admin/reservations" element={<Reservations />} />
           <Route path="/admin/analytics" element={<Analytics />} />
           <Route path="/admin/settings" element={<Settings />} />
-          <Route path="/student" element={<StudentDashboard />} />
+          // <Route path="/student" element={<div />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

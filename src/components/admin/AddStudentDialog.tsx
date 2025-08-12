@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { UserPlus, Mail, User } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface AddStudentDialogProps {
   open: boolean;
@@ -15,73 +16,57 @@ interface AddStudentDialogProps {
 
 export const AddStudentDialog = ({ open, onOpenChange, onStudentAdded }: AddStudentDialogProps) => {
   const { toast } = useToast();
-  const [formData, setFormData] = useState({
-    email: "",
+const [formData, setFormData] = useState({
     fullName: "",
-    password: ""
+    email: "",
+    courseLevel: "UG",
+    program: "BCom",
+    year: 1,
+    division: "",
+    rollNumber: "",
+    studentNumber: ""
   });
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      // Create user account
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            full_name: formData.fullName
+      // Basic validation
+      if (!formData.fullName || !formData.program || !formData.division || !formData.rollNumber) {
+        toast({ title: "Missing fields", description: "Please fill all required fields.", variant: "destructive" });
+        return;
+      }
+
+      const { error } = await (supabase as any)
+        .from('students')
+        .insert([
+          {
+            full_name: formData.fullName,
+            email: formData.email || null,
+            course_level: formData.courseLevel,
+            program: formData.program,
+            year: formData.year,
+            division: formData.division,
+            roll_number: formData.rollNumber,
+            student_number: formData.studentNumber || null,
           }
-        }
+        ]);
+
+      if (error) throw error;
+
+      toast({
+        title: "Student Added Successfully",
+        description: `${formData.fullName} has been added.`,
       });
 
-      if (authError) throw authError;
-
-      if (authData.user) {
-        // Create profile
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert([
-            {
-              id: authData.user.id,
-              email: formData.email,
-              full_name: formData.fullName
-            }
-          ]);
-
-        if (profileError) throw profileError;
-
-        // Assign student role
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .insert([
-            {
-              user_id: authData.user.id,
-              role: 'student'
-            }
-          ]);
-
-        if (roleError) throw roleError;
-
-        toast({
-          title: "Student Added Successfully",
-          description: `${formData.fullName} has been registered as a student.`,
-        });
-
-        onStudentAdded();
-        onOpenChange(false);
-        setFormData({ email: "", fullName: "", password: "" });
-      }
+      onStudentAdded();
+      onOpenChange(false);
+      setFormData({ fullName: "", email: "", courseLevel: "UG", program: "BCom", year: 1, division: "", rollNumber: "", studentNumber: "" });
     } catch (error: any) {
       console.error('Error adding student:', error);
-      toast({
-        title: "Error Adding Student",
-        description: error.message,
-        variant: "destructive"
-      });
+      toast({ title: "Error Adding Student", description: error.message, variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -96,7 +81,7 @@ export const AddStudentDialog = ({ open, onOpenChange, onStudentAdded }: AddStud
             Add New Student
           </DialogTitle>
           <DialogDescription>
-            Create a new student account and digital ID
+            Add a student record (no student login). Email is optional.
           </DialogDescription>
         </DialogHeader>
 
@@ -117,35 +102,85 @@ export const AddStudentDialog = ({ open, onOpenChange, onStudentAdded }: AddStud
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email Address</Label>
+            <Label htmlFor="email">Email Address (optional)</Label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 id="email"
                 type="email"
-                placeholder="Enter student's email"
+                placeholder="Enter student's email (optional)"
                 value={formData.email}
                 onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                 className="pl-10"
-                required
               />
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password">Temporary Password</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="Create temporary password"
-              value={formData.password}
-              onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-              required
-              minLength={6}
-            />
-            <p className="text-xs text-muted-foreground">
-              Student can change this password after first login
-            </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Course Level</Label>
+              <Select value={formData.courseLevel} onValueChange={(v) => setFormData(prev => ({ ...prev, courseLevel: v }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select level" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="UG">UG</SelectItem>
+                  <SelectItem value="PG">PG</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Program</Label>
+              <Select value={formData.program} onValueChange={(v) => setFormData(prev => ({ ...prev, program: v }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select program" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="BCom">BCom</SelectItem>
+                  <SelectItem value="MCom">MCom</SelectItem>
+                  <SelectItem value="BBA">BBA</SelectItem>
+                  <SelectItem value="BCA">BCA</SelectItem>
+                  <SelectItem value="BA">BA</SelectItem>
+                  <SelectItem value="BEd">BEd</SelectItem>
+                  <SelectItem value="DEd">DEd</SelectItem>
+                  <SelectItem value="BSc">BSc</SelectItem>
+                  <SelectItem value="MSc">MSc</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Year</Label>
+              <Select value={String(formData.year)} onValueChange={(v) => setFormData(prev => ({ ...prev, year: Number(v) }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select year" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1</SelectItem>
+                  <SelectItem value="2">2</SelectItem>
+                  <SelectItem value="3">3</SelectItem>
+                  <SelectItem value="4">4</SelectItem>
+                  <SelectItem value="5">5</SelectItem>
+                  <SelectItem value="6">6</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="division">Division</Label>
+              <Input id="division" placeholder="e.g., A" value={formData.division} onChange={(e) => setFormData(prev => ({ ...prev, division: e.target.value }))} required />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="roll">Roll Number</Label>
+              <Input id="roll" placeholder="e.g., 123" value={formData.rollNumber} onChange={(e) => setFormData(prev => ({ ...prev, rollNumber: e.target.value }))} required />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="studnum">Student Number (optional)</Label>
+              <Input id="studnum" placeholder="Optional unique student number" value={formData.studentNumber} onChange={(e) => setFormData(prev => ({ ...prev, studentNumber: e.target.value }))} />
+            </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t">
@@ -158,7 +193,7 @@ export const AddStudentDialog = ({ open, onOpenChange, onStudentAdded }: AddStud
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Creating..." : "Add Student"}
+              {isLoading ? "Saving..." : "Add Student"}
             </Button>
           </div>
         </form>

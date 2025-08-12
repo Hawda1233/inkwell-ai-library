@@ -16,7 +16,13 @@ GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.js", im
 
 interface StudentRow {
   full_name: string;
-  email: string;
+  email?: string;
+  course_level: 'UG' | 'PG';
+  program: 'BCom' | 'MCom' | 'BBA' | 'BCA' | 'BA' | 'BEd' | 'DEd' | 'BSc' | 'MSc';
+  year: number;
+  division: string;
+  roll_number: string;
+  student_number?: string;
 }
 
 export const BulkStudentImport = ({ onComplete }: { onComplete: () => void }) => {
@@ -27,11 +33,11 @@ export const BulkStudentImport = ({ onComplete }: { onComplete: () => void }) =>
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  const downloadTemplate = () => {
-    const headers = ["full_name", "email"];
+const downloadTemplate = () => {
+    const headers = ["full_name","email","course_level","program","year","division","roll_number","student_number"];
     const rows = [
-      ["Alice Johnson", "alice@example.com"],
-      ["Bob Kumar", "bob.kumar@example.com"],
+      ["Alice Johnson","alice@example.com","UG","BCom","1","A","123",""],
+      ["Bob Kumar","","PG","MCom","2","B","45","STU-00045"]
     ];
     const csv = [headers, ...rows].map(r => r.map(f => `"${f}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
@@ -43,17 +49,25 @@ export const BulkStudentImport = ({ onComplete }: { onComplete: () => void }) =>
     URL.revokeObjectURL(url);
   };
 
-  const parseCSV = (text: string): StudentRow[] => {
+const parseCSV = (text: string): StudentRow[] => {
     const lines = text.split(/\r?\n/).filter(Boolean);
     if (lines.length < 2) return [];
-    const headers = lines[0].split(",").map(h => h.replace(/"/g, '').trim().toLowerCase());
-    const nameIdx = headers.indexOf("full_name");
-    const emailIdx = headers.indexOf("email");
+    const headerMap = lines[0].split(",").map(h => h.replace(/"/g, '').trim().toLowerCase());
+    const idx = (key: string) => headerMap.indexOf(key);
     const out: StudentRow[] = [];
     for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split(",").map(v => v.replace(/"/g, '').trim());
-      const row: StudentRow = { full_name: values[nameIdx] || '', email: values[emailIdx] || '' };
-      if (row.email) out.push(row);
+      const row: StudentRow = {
+        full_name: values[idx('full_name')] || '',
+        email: values[idx('email')] || undefined,
+        course_level: (values[idx('course_level')] || 'UG').toUpperCase() as 'UG' | 'PG',
+        program: (values[idx('program')] || 'BCom') as any,
+        year: Number(values[idx('year')] || '1'),
+        division: values[idx('division')] || '',
+        roll_number: values[idx('roll_number')] || '',
+        student_number: values[idx('student_number')] || undefined,
+      };
+      if (row.full_name && row.program && row.division && row.roll_number && row.year) out.push(row);
     }
     return out;
   };
@@ -80,7 +94,15 @@ export const BulkStudentImport = ({ onComplete }: { onComplete: () => void }) =>
       const full_name = before.split(/[-,|]/)[0].trim() || emailMatch.split('@')[0];
       const email = emailMatch;
       if (!seen.has(email)) {
-        rows.push({ full_name, email });
+        rows.push({ 
+          full_name, 
+          email, 
+          course_level: 'UG',
+          program: 'BCom',
+          year: 1,
+          division: '',
+          roll_number: '',
+        });
         seen.add(email);
       }
     }
@@ -90,7 +112,15 @@ export const BulkStudentImport = ({ onComplete }: { onComplete: () => void }) =>
       for (const email of found) {
         const nameGuess = email.split('@')[0].replace(/[._-]/g, ' ');
         if (!seen.has(email)) {
-          rows.push({ full_name: nameGuess, email });
+          rows.push({ 
+            full_name: nameGuess, 
+            email,
+            course_level: 'UG',
+            program: 'BCom',
+            year: 1,
+            division: '',
+            roll_number: '',
+          });
           seen.add(email);
         }
       }

@@ -17,7 +17,10 @@ import {
   X
 } from "lucide-react";
 import Papa from "papaparse";
-
+// PDF.js support for parsing book lists from PDFs
+import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
+// @ts-ignore
+GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.js", import.meta.url).toString();
 interface BulkImportProps {
   onImportComplete: () => void;
 }
@@ -113,38 +116,165 @@ const parseCSV = (text: string): CSVBook[] => {
   return books.filter(b => b.title && b.author);
 };
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+// Parse a PDF into CSVBook[] using simple heuristics and Marathi-friendly labels
+const parsePDF = async (arrayBuffer: ArrayBuffer): Promise<CSVBook[]> => {
+  const pdf = await getDocument({ data: arrayBuffer }).promise;
 
-    if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
-      toast({
-        title: "Invalid File Type",
-        description: "Please select a CSV file",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setCsvFile(file);
-    
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
-      const books = parseCSV(text);
-      setPreviewData(books);
-      
-      if (books.length === 0) {
-        toast({
-          title: "No Valid Data",
-          description: "No valid book entries found in the CSV file",
-          variant: "destructive"
-        });
+  const lines: string[] = [];
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    let current = "";
+    for (const item of content.items as any[]) {
+      const str = (item.str || "").toString();
+      if (str) current += (current ? " " : "") + str;
+      if (item.hasEOL) {
+        lines.push(current.trim());
+        current = "";
       }
-    };
-    reader.readAsText(file);
+    }
+    if (current.trim()) lines.push(current.trim());
+    lines.push(""); // page break -> blank line
+  }
+
+  const labelAliases: Record<keyof CSVBook, string[]> = {
+    title: ["title", "book title", "शीर्षक"],
+    author: ["author", "लेखक"],
+    isbn: ["isbn"],
+    publisher: ["publisher", "प्रकाशक"],
+    category: ["category", "श्रेणी", "विभाग"],
+    publication_year: ["publication year", "year", "वर्ष"],
+    total_copies: ["total copies", "copies", "प्रती"],
+    location_shelf: ["shelf", "location", "रॅक", "शेल्फ"],
+    description: ["description", "वर्णन"],
+  } as any;
+
+  const toKey = (k: string): keyof CSVBook | null => {
+    const key = k.trim().toLowerCase();
+    for (const field of Object.keys(labelAliases) as (keyof CSVBook)[]) {
+      if (labelAliases[field].some(a => key.includes(a))) return field;
+    }
+    return null;
   };
 
+  const text = lines.join("\n");
+  let blocks = text.split(/\n\s*\n+/); // blank-line separated blocks
+  if (blocks.length <= 1) {
+    // Fallback: treat each non-empty line as a potential record
+    blocks = lines.filter(l => l.trim().length > 0);
+  }
+
+  const isbnRegex = /(\d[\d-]{8,16}[\dxX])/;
+  const yearRegex = /\b(1[5-9]\d{2}|20\d{2}|2100)\b/;
+
+  const parsed: CSVBook[] = [];
+
+  const parseBlock = (block: string): CSVBook | null => {
+    const lns = block.split(/\n+/).map(l => l.trim()).filter(Boolean);
+    if (!lns.length) return null;
+
+    const rec: Partial<CSVBook> = {};
+
+    // key: value lines
+    for (const l of lns) {
+      const parts = l.split(":");
+      if (parts.length > 1) {
+        const key = toKey(parts[0]);
+        const value = parts.slice(1).join(":").trim();
+        if (key) (rec as any)[key] = value;
+      }
+      // attempt to extract isbn/year anywhere
+      if (!rec.isbn) {
+        const m = l.match(isbnRegex);
+        if (m) rec.isbn = m[1].replace(/-/g, "");
+      }
+      if (!rec.publication_year) {
+        const y = l.match(yearRegex)?.[0];
+        if (y) rec.publication_year = y;
+      }
+      if (!rec.total_copies && /(copies|प्रती)/i.test(l)) {
+        const n = l.match(/\d+/)?.[0];
+        if (n) rec.total_copies = n;
+      }
+      if (!rec.publisher && /(publisher|प्रकाशक)/i.test(l)) {
+        const v = l.split(/publisher|प्रकाशक/i)[1]?.replace(/[:\-]/, "").trim();
+        if (v) rec.publisher = v;
+      }
+    }
+
+    // heuristics for title/author if missing
+    if (!rec.title || !rec.author) {
+      const first = lns[0];
+      const byMatch = first.match(/(.+)\s+by\s+(.+)/i);
+      if (byMatch) {
+        rec.title = rec.title || byMatch[1].trim();
+        rec.author = rec.author || byMatch[2].trim();
+      } else {
+        rec.title = rec.title || first;
+        rec.author = rec.author || lns[1] || "Unknown";
+      }
+    }
+
+    const out: CSVBook = {
+      title: (rec.title || "").trim(),
+      author: (rec.author || "Unknown").trim(),
+      isbn: (rec.isbn || "").replace(/[^0-9Xx]/g, ""),
+      publisher: rec.publisher?.trim() || "",
+      category: rec.category?.trim() || "",
+      publication_year: rec.publication_year?.trim() || "",
+      total_copies: rec.total_copies?.trim() || "1",
+      location_shelf: rec.location_shelf?.trim() || "",
+      description: rec.description?.trim() || lns.slice(2).join(" ") || "",
+    };
+
+    if (!out.title) return null;
+    if (!out.author) out.author = "Unknown";
+    return out;
+  };
+
+  for (const b of blocks) {
+    const book = parseBlock(b);
+    if (book && book.title && book.author) parsed.push(book);
+  }
+
+  // de-dupe by title+author within file
+  const seen = new Set<string>();
+  const unique: CSVBook[] = [];
+  for (const b of parsed) {
+    const key = `${b.title.toLowerCase()}|${b.author.toLowerCase()}`;
+    if (!seen.has(key)) { seen.add(key); unique.push(b); }
+  }
+  return unique;
+};
+
+const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  setCsvFile(file);
+
+  try {
+    if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+      const buf = await file.arrayBuffer();
+      const books = await parsePDF(buf);
+      setPreviewData(books);
+      if (!books.length) {
+        toast({ title: "No data found", description: "We couldn't detect books in this PDF.", variant: "destructive" });
+      }
+    } else if (file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv')) {
+      const text = await file.text();
+      const books = parseCSV(text);
+      setPreviewData(books);
+      if (!books.length) {
+        toast({ title: "No Valid Data", description: "No valid book entries found in the CSV file", variant: "destructive" });
+      }
+    } else {
+      toast({ title: "Unsupported file", description: "Upload a CSV or PDF file", variant: "destructive" });
+    }
+  } catch (e: any) {
+    toast({ title: "File read failed", description: e.message || 'Unknown error', variant: "destructive" });
+  }
+};
   const validateBook = (book: CSVBook): string[] => {
     const errors: string[] = [];
     
@@ -315,7 +445,7 @@ const importBooks = async () => {
       <Alert>
         <FileText className="h-4 w-4" />
         <AlertDescription>
-          Upload a CSV file with book information. Make sure your CSV includes headers: title, author, isbn, publisher, category, publication_year, total_copies, location_shelf, description
+          Upload a CSV or PDF with book information. For best results include: title, author, isbn, publisher, category, publication_year, total_copies, location_shelf, description
         </AlertDescription>
       </Alert>
 
@@ -337,9 +467,9 @@ const importBooks = async () => {
       {/* File Upload */}
       <Card>
         <CardHeader>
-          <CardTitle>Upload CSV File</CardTitle>
+          <CardTitle>Upload File</CardTitle>
           <CardDescription>
-            Select a CSV file containing book information
+            Select a CSV or PDF containing book information
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -347,7 +477,7 @@ const importBooks = async () => {
             <Input
               ref={fileInputRef}
               type="file"
-              accept=".csv,text/csv"
+              accept=".csv,.pdf,application/pdf,text/csv"
               onChange={handleFileSelect}
               disabled={importing}
             />
@@ -416,7 +546,7 @@ const importBooks = async () => {
               <Button
                 onClick={importBooks}
                 className="w-full"
-                disabled={importing}
+                disabled={importing || previewData.length === 0}
               >
                 <Upload className="w-4 h-4 mr-2" />
                 Import {previewData.length} Books

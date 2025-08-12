@@ -16,6 +16,7 @@ import {
   Loader2,
   X
 } from "lucide-react";
+import Papa from "papaparse";
 
 interface BulkImportProps {
   onImportComplete: () => void;
@@ -80,37 +81,37 @@ export const BulkImport = ({ onImportComplete }: BulkImportProps) => {
     URL.revokeObjectURL(url);
   };
 
-  const parseCSV = (text: string): CSVBook[] => {
-    const lines = text.split('\n').filter(line => line.trim());
-    if (lines.length < 2) return [];
+const parseCSV = (text: string): CSVBook[] => {
+  const { data } = Papa.parse<Record<string, string>>(text, {
+    header: true,
+    skipEmptyLines: true,
+    transformHeader: (h) => h.replace(/^\uFEFF/, '').replace(/"/g, '').trim().toLowerCase(),
+  });
 
-    const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim().toLowerCase());
-    const data: CSVBook[] = [];
-
-    for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(',').map(v => v.replace(/"/g, '').trim());
-      
-      if (values.length >= 2) { // At least title and author required
-        const book: CSVBook = {
-          title: values[headers.indexOf('title')] || '',
-          author: values[headers.indexOf('author')] || '',
-          isbn: values[headers.indexOf('isbn')] || '',
-          publisher: values[headers.indexOf('publisher')] || '',
-          category: values[headers.indexOf('category')] || '',
-          publication_year: values[headers.indexOf('publication_year')] || '',
-          total_copies: values[headers.indexOf('total_copies')] || '1',
-          location_shelf: values[headers.indexOf('location_shelf')] || '',
-          description: values[headers.indexOf('description')] || ''
-        };
-        
-        if (book.title && book.author) {
-          data.push(book);
-        }
+  const mapField = (row: Record<string, string>, keys: string[]) => {
+    for (const key of keys) {
+      const val = (row as any)[key];
+      if (val !== undefined && val !== null && String(val).trim() !== '') {
+        return String(val).trim();
       }
     }
-
-    return data;
+    return '';
   };
+
+  const books: CSVBook[] = (data as any[]).map((row) => ({
+    title: mapField(row, ['title', 'book_title']),
+    author: mapField(row, ['author', 'authors', 'author1']),
+    isbn: mapField(row, ['isbn']),
+    publisher: mapField(row, ['publisher']),
+    category: mapField(row, ['category']),
+    publication_year: mapField(row, ['publication_year', 'year', 'published_year']),
+    total_copies: mapField(row, ['total_copies', 'copies', 'stock']) || '1',
+    location_shelf: mapField(row, ['location_shelf', 'shelf', 'location']),
+    description: mapField(row, ['description', 'summary'])
+  }));
+
+  return books.filter(b => b.title && b.author);
+};
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -161,88 +162,142 @@ export const BulkImport = ({ onImportComplete }: BulkImportProps) => {
     return errors;
   };
 
-  const importBooks = async () => {
-    if (!previewData.length) return;
+const importBooks = async () => {
+  if (!previewData.length) return;
 
-    setImporting(true);
-    setProgress(0);
-    setImportResult(null);
+  setImporting(true);
+  setProgress(0);
+  setImportResult(null);
 
-    const result: ImportResult = {
-      success: 0,
-      failed: 0,
-      errors: []
-    };
+  const result: ImportResult = { success: 0, failed: 0, errors: [] };
+  const total = previewData.length;
+  let processed = 0;
 
-    for (let i = 0; i < previewData.length; i++) {
-      const book = previewData[i];
-      const validationErrors = validateBook(book);
-      
-      if (validationErrors.length > 0) {
-        result.failed++;
-        result.errors.push(`Row ${i + 2}: ${validationErrors.join(', ')}`);
-        setProgress(((i + 1) / previewData.length) * 100);
-        continue;
+  const items = previewData.map((book, idx) => ({ book, row: idx + 2 }));
+
+  // Validate and dedupe ISBN within file
+  const valid: typeof items = [];
+  const seenIsbn = new Set<string>();
+  for (const item of items) {
+    const errs = validateBook(item.book);
+    if (item.book.isbn && item.book.isbn.trim()) {
+      const isbn = item.book.isbn.trim();
+      if (seenIsbn.has(isbn)) {
+        errs.push(`Duplicate ISBN in file: ${isbn}`);
+      } else {
+        seenIsbn.add(isbn);
       }
+    }
 
-      try {
-        // Check for duplicate ISBN if provided
-        if (book.isbn?.trim()) {
-          const { data: existingBook } = await supabase
-            .from('books')
-            .select('id')
-            .eq('isbn', book.isbn.trim())
-            .maybeSingle();
+    if (errs.length) {
+      result.failed++;
+      result.errors.push(`Row ${item.row}: ${errs.join(', ')}`);
+      processed++;
+      setProgress((processed / total) * 100);
+    } else {
+      valid.push(item);
+    }
+  }
 
-          if (existingBook) {
-            result.failed++;
-            result.errors.push(`Row ${i + 2}: Book with ISBN ${book.isbn} already exists`);
-            setProgress(((i + 1) / previewData.length) * 100);
-            continue;
-          }
-        }
+  // Check duplicates by ISBN in database
+  let toInsert = valid;
+  const isbnList = Array.from(new Set(valid.map(v => v.book.isbn?.trim()).filter(Boolean) as string[]));
+  if (isbnList.length) {
+    const { data: existingIsbns, error: existingErr } = await supabase
+      .from('books')
+      .select('isbn')
+      .in('isbn', isbnList);
 
-        const { error } = await supabase
-          .from('books')
-          .insert([{
-            title: book.title.trim(),
-            author: book.author.trim(),
-            isbn: book.isbn?.trim() || null,
-            publisher: book.publisher?.trim() || null,
-            category: book.category?.trim() || null,
-            description: book.description?.trim() || null,
-            publication_year: book.publication_year ? parseInt(book.publication_year) : null,
-            total_copies: parseInt(book.total_copies) || 1,
-            available_copies: parseInt(book.total_copies) || 1,
-            location_shelf: book.location_shelf?.trim() || null,
-            cover_image_url: null
-          }]);
-
-        if (error) {
+    if (!existingErr && existingIsbns) {
+      const existingSet = new Set(existingIsbns.map((r: any) => (r.isbn as string).trim()));
+      const filtered: typeof valid = [];
+      for (const item of valid) {
+        const isbn = item.book.isbn?.trim();
+        if (isbn && existingSet.has(isbn)) {
           result.failed++;
-          result.errors.push(`Row ${i + 2}: ${error.message}`);
+          result.errors.push(`Row ${item.row}: Book with ISBN ${isbn} already exists`);
+          processed++;
+          setProgress((processed / total) * 100);
         } else {
-          result.success++;
+          filtered.push(item);
         }
-      } catch (error: any) {
-        result.failed++;
-        result.errors.push(`Row ${i + 2}: ${error.message}`);
       }
-
-      setProgress(((i + 1) / previewData.length) * 100);
+      toInsert = filtered;
     }
+  }
 
-    setImportResult(result);
-    setImporting(false);
+  const mapToDb = (b: CSVBook) => ({
+    title: b.title.trim(),
+    author: b.author.trim(),
+    isbn: b.isbn?.trim() || null,
+    publisher: b.publisher?.trim() || null,
+    category: b.category?.trim() || null,
+    description: b.description?.trim() || null,
+    publication_year: b.publication_year ? parseInt(b.publication_year) : null,
+    total_copies: parseInt(b.total_copies) || 1,
+    available_copies: parseInt(b.total_copies) || 1,
+    location_shelf: b.location_shelf?.trim() || null,
+    cover_image_url: null
+  });
 
-    if (result.success > 0) {
-      toast({
-        title: "Import Complete",
-        description: `Successfully imported ${result.success} books. ${result.failed} failed.`,
-      });
-      onImportComplete();
+  const CHUNK_SIZE = 100;
+
+  for (let i = 0; i < toInsert.length; i += CHUNK_SIZE) {
+    const batchItems = toInsert.slice(i, i + CHUNK_SIZE);
+    const batch = batchItems.map(it => mapToDb(it.book));
+    try {
+      const { error } = await supabase.from('books').insert(batch);
+      if (error) {
+        // Fallback per-row to capture individual errors
+        for (const it of batchItems) {
+          const { error: rowErr } = await supabase.from('books').insert([mapToDb(it.book)]);
+          if (rowErr) {
+            result.failed++;
+            result.errors.push(`Row ${it.row}: ${rowErr.message}`);
+          } else {
+            result.success++;
+          }
+          processed++;
+          setProgress((processed / total) * 100);
+        }
+      } else {
+        result.success += batch.length;
+        processed += batch.length;
+        setProgress((processed / total) * 100);
+      }
+    } catch (e: any) {
+      // Unexpected failure, fallback per-row
+      for (const it of batchItems) {
+        try {
+          const { error: rowErr } = await supabase.from('books').insert([mapToDb(it.book)]);
+          if (rowErr) {
+            result.failed++;
+            result.errors.push(`Row ${it.row}: ${rowErr.message}`);
+          } else {
+            result.success++;
+          }
+        } catch (err: any) {
+          result.failed++;
+          result.errors.push(`Row ${it.row}: ${err.message}`);
+        } finally {
+          processed++;
+          setProgress((processed / total) * 100);
+        }
+      }
     }
-  };
+  }
+
+  setImportResult(result);
+  setImporting(false);
+
+  if (result.success > 0) {
+    toast({
+      title: "Import Complete",
+      description: `Successfully imported ${result.success} books. ${result.failed} failed.`,
+    });
+    onImportComplete();
+  }
+};
 
   const resetImport = () => {
     setCsvFile(null);

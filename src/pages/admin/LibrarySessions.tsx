@@ -186,11 +186,11 @@ export const LibrarySessions = () => {
             </Button>
             <Button
               variant="outline"
-              onClick={() => setQrScannerOpen(true)}
+              onClick={() => setQrInputOpen(true)}
               className="flex items-center gap-2"
             >
-              <ScanLine className="w-4 h-4" />
-              Camera Scan
+              <Keyboard className="w-4 h-4" />
+              Scan (Barcode Scanner)
             </Button>
             <Button
               variant="outline"

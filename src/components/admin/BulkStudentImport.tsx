@@ -10,9 +10,8 @@ import { FileText, Upload, Download, Loader2, X } from "lucide-react";
 
 // PDF.js
 import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
-// Configure worker
-// @ts-ignore
-GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.js", import.meta.url).toString();
+import pdfWorkerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
 
 interface StudentRow {
   full_name: string;

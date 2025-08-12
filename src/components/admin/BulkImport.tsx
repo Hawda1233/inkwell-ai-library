@@ -19,8 +19,8 @@ import {
 import Papa from "papaparse";
 // PDF.js support for parsing book lists from PDFs
 import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
-// @ts-ignore
-GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.js", import.meta.url).toString();
+import pdfWorkerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
 interface BulkImportProps {
   onImportComplete: () => void;
 }
